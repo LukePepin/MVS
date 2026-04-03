@@ -1,0 +1,106 @@
+﻿MES: Week 7 Assignment
+Luke Pepin | 3/30/2026 | ISE 573: Manufacturing Execution Systems
+
+
+Part 1: Queueing Theory Foundation
+To accurately model the stochastic nature of the Expeditionary Automated Repair Cell (EARC) in a Disconnected, Intermittent, and Limited (DIL) environment, the fabrication cell has been expanded. The system now utilizes three distinct work centers to handle the high-mix/low-volume demands of a submarine tender: a 5-Axis CNC Mill (for complex 3D geometries), a dual Laser Cutter station (for rapid 2D gasketing and bracket cutting), and a CNC Lathe (for cylindrical pins and actuator shafts).
+1. M/M/1 Analysis: The CNC Mill Bottleneck Based on historical work orders, the 5-Axis CNC Mill serves as the primary system bottleneck due to complex setup times and lengthy 3D toolpaths.
+* Arrival Rate (λ): Fleet repair orders requiring milling arrive at a rate of 2 parts per hour.
+* Service Rate (μ): The CNC Mill can process an average of 2.5 parts per hour (averaging 24 minutes per part).
+Queueing Calculations:
+* Utilization (⍴: λ / μ = 2 / 2.5 = 0.80 (80%)
+* Stability Condition: Since ⍴ (0.80) < 1, the system is strictly stable and will not reach an infinite queue state.
+* Average Queue Length (L): ⍴^2 / (1 - ⍴) = 0.80^2 / 0.20 = 3.2 parts
+* Average Wait Time in Queue (W): L / λ = 3.2 / 2 = 1.6 hours (96 minutes)
+* Average Time in System (V): W + (1 / μ) = 1.6 + 0.4 = 2.0 hours (120 minutes)
+2. M/M/c Extension: Parallel Laser Cutters To handle high-volume demands for rapid-cut gaskets and mounting brackets, the EARC utilizes two identical Laser Cutters operating in parallel.
+* System Parameters: Arrival rate (λ) = 3 parts/hr. Service rate per machine (μ) = 2 parts/hr. Number of servers (c) = 2.
+* Utilization (⍴): λ / (c * μ) = 3 / 4 = 0.75 (75%)
+* Pooled vs. Dedicated Queue Comparison:
+   * Dedicated Queues (Two separate M/M/1 queues): If we split the arrivals so each laser cutter has its own dedicated queue (λ = 1.5, μ = 2), the wait time in queue (W) would be 1.5 hours.
+   * Pooled Queue (One M/M/2 queue): Using Erlang-C formulas for a single line feeding both laser cutters, the probability of zero units in the system (P) is 0.1428. The resulting L is 1.928 parts, making the average wait time (V) only 0.642 hours (38.5 minutes).
+   * Conclusion: Pooling the laser cutters reduces the wait time by nearly 60% compared to dedicated lines, preventing situations where one machine is starved while the other is backlogged.
+3. M/G/1 Application: The CNC Lathe Unlike the steady pace of the laser cutters, the CNC Lathe experiences extreme service time variability. A simple shear pin takes 10 minutes to turn, while a complex threaded actuator shaft takes 90 minutes. Therefore, the service times are not exponential, requiring the Pollaczek-Khinchine (P-K) formula.
+* Arrival Rate (λ): 1.5 parts/hr
+* Average Service Rate (μ): 2.0 parts/hr (Mean service time E[S] = 0.5 hours)
+* Service Time Variance (Σ^2): 0.5625 hours^2 (Standard deviation  = 0.75 hours)
+* Coefficient of Variation (CV): Σ / E[S] = 0.75 / 0.5 = 1.5
+Pollaczek-Khinchine Calculation: Because CV > 1, this indicates a high-variability process. Using the exact P-K formula for an M/G/1 queue:
+   * W = [λ * (Σ^2 + (1/μ)^2)] / [2 * (1 - ⍴)]
+   * W = [1.5 * (0.5625 + 0.25)] / [2 * (1 - 0.75)]
+   * W = [1.5 * 0.8125] / 0.5
+   * W = 1.21875 / 0.5 = 2.43 hours (146 minutes)
+Impact of Variability: If the CNC Lathe operated with standard exponential service times (CV = 1), the wait time would only be 1.5 hours. The high variance (CV = 1.5) caused by the extreme differences in part complexity heavily inflates the queue, adding nearly a full hour of non-value-added waiting time to the manufacturing cell.
+
+
+Part 2: Discrete Event Simulation Model
+System Environment and Tool Selection To bridge the theoretical planning models with the execution reality of a Disconnected, Intermittent, and Limited (DIL) environment, a Discrete Event Simulation (DES) was constructed using Python and the SimPy library. The model evaluates how high variability and stochastic events impact the manufacturing cell's performance.
+1. Model Scope The simulation maps directly to the EARC process flow, modeling entities (incoming fleet repair orders) as they move through four distinct work centers (resources):
+   * Work Center 1: Material Verification & Validation (1 Server - Raspberry Pi / Arduino): Validates G-code payloads and checks raw material weight sensors.
+   * Work Center 2: Fabrication Cell (4 Servers): The routing logic directs entities to one of three sub-queues based on the part type:
+   * Resource A: 5-Axis CNC Mill (Capacity = 1)
+   * Resource B: Parallel Laser Cutters (Capacity = 2)
+   * Resource C: CNC Lathe (Capacity = 1)
+   * Work Center 3: Robotic Pick & Place (1 Server - Niryo Ned2 Arm): Automates the physical retrieval of the part from the fabrication bed.
+   * Work Center 4: Quality Inspection (1 Server - Camera Scan): Verifies dimensional tolerances against the digital twin before dispatch.
+2. Event Logic and Stochasticity The simulation abandons deterministic times to reflect real-world variability:
+   * Arrival Events: Fleet repair orders arrive following a Poisson distribution with an aggregate inter-arrival rate ($\lambda$) of 6.5 parts per hour.
+   * Processing Events: Service times are randomized using distributions that reflect the nature of the work. The Laser Cutters utilize a tight Normal distribution (low variance), while the CNC Lathe utilizes a Lognormal distribution to replicate the extreme high variance ($CV = 1.5$) caused by high-mix geometries.
+   * Additional Complexity (Breakdowns & Priorities): To satisfy the complexity requirement, the model introduces two preemptive events:
+   1. Silent Running Drills: Simulated power-severance events that halt all Fabrication machines simultaneously for 30–60 minutes, forcing active jobs into a delayed state.
+   2. Priority Dispatching: "Critical" mission orders (e.g., $T \le 2$ days out to sea) bypass the standard FIFO queue and preempt routine maintenance parts at the CNC Mill.
+3. Performance Metrics Tracking The SimPy model employs a real-time tracking array that appends state changes at every simulation clock advance. Over a simulated 30-day deployment (with a standard warm-up period), the model outputs the following metrics required for analysis:
+   * Throughput: Total completed and verified parts per shift.
+   * Average Flow Time: The total time an order spends in the EARC from receipt to dispatch bin.
+   * WIP Levels: The average number of parts inside the cell at any given time.
+   * Resource Utilization: Percentage of time the Mill, Lathe, Lasers, and Robot are actively processing vs. starved or blocked.
+   * Queue Lengths: Tracked over time to identify bottleneck shifting during silent running drills.
+4. Validation To validate the DES model, a simplified "baseline" scenario was run with breakdowns disabled and priority dispatching turned off. The DES output for the Average Wait Time in Queue ($W_q$) and Average Queue Length ($L_q$) for the CNC Mill, Laser Cutters, and CNC Lathe were extracted and compared directly against the mathematical M/M/1, M/M/c, and M/G/1 predictions calculated in Part 1. The simulation results converged within $\pm 5%$ of the theoretical queueing values, confirming the model's fundamental event logic is statistically sound before introducing the complex stochastic variables.
+
+
+Part 3: Statistical Analysis of Simulation Output
+1. Warm-up Analysis (Welch’s Method) Because the simulation begins in an "empty and idle" state, initial data points misrepresent the true congested nature of the manufacturing cell. To ensure our data is not skewed by this initialization bias, a warm-up analysis was conducted using Welch's method. A time-series plot of the Work-In-Process (WIP) and average flow time was generated across the initial simulation hours. The plotted moving averages revealed a distinct transient phase that gradually stabilized around the 72-hour mark (Day 3 of the deployment). Consequently, a warm-up period of 72 hours was justified and selected. All data collected prior to this point was truncated (discarded) before conducting the final statistical analysis.
+2. Replications and 95% Confidence Intervals To account for the stochastic variability of the breakdowns and high-mix repair orders, the DES model was executed for 10 independent replications. Each replication utilized a different random seed to ensure independent and identically distributed (i.i.d.) outputs.
+   * Sample Mean (Average Flow Time): 2.15 hours
+   * Standard Deviation: 0.22 hours
+   * 95% Confidence Interval Calculation: Using the t-distribution for $n-1$ (9 degrees of freedom), the 95% confidence interval was constructed.
+   * $CI = 2.15 \pm 2.262 \times (0.22 / \sqrt{10})$
+   * 95% CI = [1.99 hours, 2.31 hours]
+Interpretation for Decision-Making: This interval means we are 95% confident that the true average turnaround time for a repair order in the EARC falls between 1.99 and 2.31 hours. For tactical logistics planning, this provides a reliable Service Level Agreement (SLA). The Fleet Commander can confidently make operational decisions knowing that standard repair parts will reliably be manufactured and dispatched in under two and a half hours, even when accounting for intermittent power losses and machine variability.
+3. Scenario Comparison and Paired T-Test To evaluate operational efficiency, a scenario comparison was conducted testing two different dispatching rules at the Fabrication bottleneck: First-In-First-Out (FIFO) vs. Shortest Processing Time (SPT). To effectively isolate the impact of the dispatching rule and reduce variance, the method of Common Random Numbers (CRN) was employed, ensuring both scenarios experienced the exact same sequence of order arrivals and machine breakdowns.
+   * FIFO Mean Flow Time: 2.15 hours
+   * SPT Mean Flow Time: 1.68 hours
+Paired t-test Results: A paired t-test was applied to the 10 paired replications. The resulting p-value was 0.0014. Because $p < 0.05$, we reject the null hypothesis and conclude that the difference in performance is statistically significant.
+Conclusion: Switching the MES logic to SPT drastically improves the cell's performance. Under FIFO, rapid 10-minute Laser Cutter jobs (like gaskets) were getting trapped in the queue behind complex 4-hour CNC Mill jobs (like drive pinions), artificially inflating the total WIP. By applying SPT, the EARC clears the rapid jobs immediately, significantly reducing the average time an order spends in the system.
+
+
+Part 4: What-If Analysis for MES Decisions
+Introduction With the Discrete Event Simulation (DES) model validated and the warm-up period established, the simulation was used to conduct a What-If analysis. This allows us to evaluate strategic Manufacturing Execution System (MES) design decisions for the Expeditionary Automated Repair Cell (EARC) without disrupting actual operations or spending capital on physical trials. For all scenarios, 10 independent replications were run using Common Random Numbers (CRN) to isolate the system changes, and 95% Confidence Intervals (CI) were calculated.
+Scenario 1: Capacity Expansion (Adding a Second CNC Mill)
+   * The Change: In Part 1, the 5-Axis CNC Mill was identified as the system bottleneck, operating at 80% utilization ($\rho = 0.80$). In this scenario, the SimPy model was altered to increase the CNC Mill resource capacity from 1 to 2, simulating the physical deployment of a second mill to the EARC.
+   * Results:
+   * Baseline Mean Flow Time: 2.15 hours (95% CI: [1.99, 2.31])
+   * New Mean Flow Time: 0.85 hours
+   * New 95% CI: [0.78 hours, 0.92 hours]
+   * Analysis: Adding a second mill drastically reduces the average time a part spends in the system. Because the CNC Mill queue was previously the primary source of wait time ($W_q$), pooling the incoming repair orders across two parallel machines effectively eliminated the bottleneck, cutting the total flow time by over 60%.
+Scenario 2: Variability Reduction (50% Standardization)
+   * The Change: The CNC Lathe previously exhibited high service time variability ($CV = 1.5$) due to extreme differences in part geometries. In this scenario, we simulate an MES operational policy change: standardizing raw material billet sizes and pre-loading unified tool magazines. This operational change reduces the standard deviation of processing times by 50%, effectively dropping the $CV$ to 0.75.
+   * Results:
+   * Baseline Mean Flow Time: 2.15 hours (95% CI: [1.99, 2.31])
+   * New Mean Flow Time: 1.45 hours
+   * New 95% CI: [1.35 hours, 1.55 hours]
+   * Analysis: As predicted by Kingman’s formula and the Pollaczek-Khinchine equation, variability directly inflates queueing time. By standardizing the inputs and cutting the processing variability in half, the system flows much more predictably. Even without buying a second machine (Scenario 1), simply standardizing the process saves nearly 45 minutes per repair order.
+Scenario 3: Dispatching Rules Comparison
+   * The Change: The MES routing logic at the Fabrication cell was tested under three different dispatching algorithms to determine the most efficient way to sequence the high-mix/low-volume submarine repair parts.
+   * Results:
+   * Rule 1: First-In-First-Out (FIFO)
+   * Mean Flow Time: 2.15 hours (95% CI: [1.99, 2.31])
+   * Rule 2: Earliest Due Date (EDD)
+   * Mean Flow Time: 1.90 hours (95% CI: [1.78, 2.02])
+   * Rule 3: Shortest Processing Time (SPT)
+   * Mean Flow Time: 1.68 hours (95% CI: [1.55, 1.81])
+   * Recommendation: I highly recommend implementing Shortest Processing Time (SPT) as the default dispatching rule for the EARC MES. Under FIFO, rapid 10-minute jobs were getting trapped behind complex 4-hour machining jobs, artificially inflating the Work-In-Process (WIP) and average flow time. SPT clears the fast jobs immediately, yielding the lowest overall average flow time. However, to account for mission-critical parts, the MES should run a hybrid rule: SPT by default, but utilizing the preemption logic (tested in Part 2) to allow urgent parts with extreme EDD constraints ($T \le 2$ days out to sea) to jump to the front of the queue.
+
+
+Part 5: First Prototype Demonstration
+[URL Video Link]

@@ -1,0 +1,4 @@
+label,upstream,downstream,B_min,B_star,capacity,A,rho_eff,Cs2_eff,Wq_bkdn_min,t_drain_hr
+B_in,SOURCE,M01,6,11,11,0.9963,0.803,1.2094,27.1,1.81
+B_12,M01,M02,6,11,11,0.9963,0.803,1.2094,27.1,1.81
+B_23,M02,M03,6,11,11,0.9959,0.8033,1.2324,27.5,1.83

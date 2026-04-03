@@ -1,0 +1,137 @@
+﻿MES: Week 2 Assignment
+Luke Pepin | 2/2/2026 | ISE 573: Manufacturing Execution Systems
+
+
+Summary of System:
+The SentryC2 EARC is designed as a decentralized, "edge-first" manufacturing system capable of operating in Disconnected, Intermittent, and Limited (DIL) environments. The traditional hierarchy is flattened to support autonomous operation when the Level 4 link is severed.
+
+
+Part 1: ISA-95 Level Mapping
+Level 4 Business Planning:
+This layer represents the Naval Logistics ERP or DLA interface. It is responsible for long-term resource planning and tracking fleet-wide readiness. The primary function here is to push "Technical Data Packages" down to the EARC. These packages contain the CAD files and urgency classifications needed for repairs. Crucially, the EARC functions asynchronously; once the data package is received, the cell can operate without a constant connection to this level.
+
+
+Level 3 MES/MOM:
+The Raspberry Pi 4 Supervisor Node acts as the "brain" of the cell at this level. Unlike a traditional MES that focuses on scheduling, the SentryC2 MES focuses on trust and validation. It validates the integrity of incoming G-code files using cryptographic proofs to ensure the design hasn't been tampered with. It also maintains a dynamic "Trust Score" for the cell based on sensor data and manages the repair queue based on mission priority.
+
+
+Level 2 Supervisory Control:
+The ROS2 Action Server and Unity Digital Twin function as the bridge between the digital plan and the physical equipment. This layer manages the logic for moving parts between stations. It acts as a safety simulation bridge, where the Digital Twin runs a virtual test of the job before the physical robot moves. If the simulation detects a collision, this level rejects the job immediately.
+
+
+Level 1 Control:
+Real-time execution is handled by the micro-controllers on the robot and the Arduino sensors. These devices operate with strict speed requirements to control motors and read sensors in milliseconds. The Arduino specifically captures vibration and motor data, processing it locally to flag any anomalies like tool wear or potential cyber-physical interference.
+
+
+Level 0 Physical Process:
+This is the hardware layer where the physical transformation of matter takes place. It includes the actual extruder nozzles, CNC spindles, robotic grippers, and the raw material itself, such as the filament spools or metal billets being shaped.
+Part 2: Production Control Philosophy Analysis
+Pull-Based:
+The EARC utilizes a hybrid strategy tailored for naval constraints. Finished goods operate on a strict Pull (Make-to-Order) system; given space limitations on submarines, parts are fabricated only upon receipt of a specific maintenance order. Conversely, raw materials follow a Push strategy. Due to contested supply chains, feedstock is pushed to the forward unit based on predictive usage (Min-Max) to ensure material availability during disconnections.
+
+
+MRP Applicability:
+Full MRP is unnecessary for the EARC's single-piece finished goods. However, MRP logic is critical for Raw Material Management. The system tracks feedstock consumption via weight sensors, calculating when stock will breach the "Min" threshold. This simplified MRP ensures critical repair capabilities are maintained by predicting material exhaustion before it occurs.
+
+
+JIT/Kanban Feasibility:
+JIT is implemented via "Digital Kanban" signals. IoT weight sensors on filament spools act as the trigger; when material drops below a set threshold (e.g., 1kg), an electronic replenishment signal is sent to the central supply node (Level 4). This automated "card" allows the cell to maintain lean inventory at the tactical edge without manual intervention.
+
+
+Theory of Constraints: 
+The primary physical bottleneck is the Fabrication Step (3D printing/milling), as print times (hours) vastly exceed robotic handling times (seconds). A secondary, digital bottleneck is Cryptographic Verification (ZKP). Generating proofs on edge hardware (Raspberry Pi) creates a "security tax" latency that must be optimized to prevent digital checks from starving the physical process.
+
+
+CONWIP Consideration:
+The system enforces a CONWIP of 1. As a tight, single-server cell, processing multiple jobs simultaneously increases collision risks without improving throughput. Limiting the system to one active job ensures the bottleneck machine is utilized efficiently without complicating the kinematic logic.
+
+
+Hybrid Approach:
+The EARC balances autonomy with logistics by combining Pull for Production with Push for Supply. Repair parts are pulled by demand to save space, while raw materials are pushed to maintain a safety buffer. This ensures the manufacturing process is demand-driven but never starved of resources due to external supply chain failures.
+
+
+________________
+Part 3: MES Database Schema Design
+Products
+Stores the "digital passport" data
+PartID
+	CAD_File_Hash
+	Materials Available
+	239c
+	2389yf2302ehf2
+	[pla-3, aluminum-23, steel-2]
+	
+
+WorkCenters
+Definitions of your hardware nodes
+CenterID
+	Type
+	Status
+	23904
+	CNC
+	Busy
+	
+
+Routings
+Defines the sequence for a part
+RoutingID
+	StepNumber
+	GCode_Script_ID
+	987345
+	7
+	gf479
+	
+
+WorkOrders
+The incoming requests from the fleet 
+OrderID
+	Requesting_Unit
+	DueDate
+	23094812
+	501st
+	05-06-2028
+	
+
+Operations
+Tracks the actual execution time 
+OpID
+	Actual_Start_Time
+	Actual_End_Time
+	Result_Status
+	234
+	09:10:24 05-05-2028
+	21:11:23 05-05-2028
+	Completed
+	
+
+________________
+
+
+RawInventory
+ Tracks the weight/quantity of stock available 
+MaterialID
+	Current_Weigh_KG
+	Last_Updated
+	pla-3
+	23.75
+	14:45:44 05-05-2028
+	
+
+SensorLogs
+Stores the condition monitoring data 
+LogID
+	Vibration_Value
+	Motor_Current
+	Timestamp
+	123413
+	255
+	2.4
+	12:28:14 05-05-2028
+	
+
+Genealogy
+Links the specific WorkOrder to the specific G-code file used and inspection results 
+SerialID
+	Inspection_Result_Data
+	23423523452
+	C:/user/admin/data/05-05-2028/21312/result_data.csv

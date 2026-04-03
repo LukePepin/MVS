@@ -1,0 +1,7 @@
+run_date,scenario,station,Wq_min,A,Ca2_arriving,Cd2,breakdowns,n_samples
+2026-04-03,exp1_baseline,Stn1,25.43,1.0,1.0,1.0085,0,2013
+2026-04-03,exp1_baseline,Stn2,26.03,1.0,1.0085,1.0099,0,2006
+2026-04-03,exp1_baseline,Stn3,24.6,1.0,1.0099,0.9843,0,2000
+2026-04-03,exp2_cascade,Stn1,88.07,0.8703,1.0,1.9685,79,2000
+2026-04-03,exp2_cascade,Stn2,43.86,1.0,1.9685,1.375,0,2000
+2026-04-03,exp2_cascade,Stn3,20.05,1.0,1.375,1.266,0,2000

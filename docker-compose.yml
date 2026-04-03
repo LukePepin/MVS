@@ -1,0 +1,50 @@
+services:
+  mvs:
+    image: mvs:alpha
+    container_name: mvs-dev
+    build:
+      context: .
+      dockerfile: Dockerfile
+    
+    # Network configuration
+    network_mode: host
+    
+    # Enable interactive terminal access
+    stdin_open: true
+    tty: true
+    
+    # Environment variables
+    environment:
+      - ROS_DOMAIN_ID=0
+      - ROS_LOCALHOST_ONLY=0
+      - DISPLAY=${DISPLAY:-}
+    
+    # Volume mounts for development
+    volumes:
+      - .:/workspace:rw
+      - ./ros2_ws/build:/workspace/ros2_ws/build:rw
+      - ./ros2_ws/install:/workspace/ros2_ws/install:rw
+
+  app:
+    build: .
+    volumes:
+      - .:/app
+      - ./ros2_ws/build:/app/ros2_ws/build:rw
+      - ./ros2_ws/install:/app/ros2_ws/install:rw
+    # ...add other service config as needed...
+    
+    # Capabilities for network operations (scapy, ARP poisoning)
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    
+    # Keep container running
+    command: /bin/bash -c "source /opt/ros/humble/setup.bash && tail -f /dev/null"
+    
+    # Auto-restart policy
+    restart: unless-stopped
+
+# Optional: Define networks if not using host mode
+# networks:
+#   ros_network:
+#     driver: bridge
