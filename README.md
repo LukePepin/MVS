@@ -32,6 +32,18 @@ npm run dev -- --host 0.0.0.0 --port 5173
 
 Dashboard component polls `http://localhost:8000/dashboard_data` every 1000ms.
 
+## CI Docker Publish (GHCR)
+
+The workflow in `.github/workflows/docker-publish.yml` publishes images to `ghcr.io`.
+
+If you see `permission_denied: write_package`, verify the following:
+
+- Repository settings: `Settings -> Actions -> General -> Workflow permissions` is set to `Read and write permissions`.
+- Repository secret: add `GHCR_TOKEN` (classic PAT) with at least `write:packages` scope.
+- Package access: in GHCR package settings for `mvs`, grant this repository `Write` access under `Manage Actions access`.
+
+The workflow prefers `GHCR_TOKEN` when available and falls back to `GITHUB_TOKEN`.
+
 ## Telemetry Modes
 
 - `Live Mode` (default): frontend polls `/dashboard_data`
