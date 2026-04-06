@@ -1,18 +1,16 @@
 # 90-Minute Deep Work Session: MVS ROS & Hardware Setup
 Date: 2026-04-04
 
-This schedule is optimized for a focused 90-minute block to get your Docker ROS environment mapped, your hardware (Arduino Nano 33 BLE) wired and mounted, and your initial IMU telemetry baseline logging.
+## Progress Update
+Date: 2026-04-06
 
-## Phase 1: Environment & File Cleanup (15 Minutes)
+- Arduino serial connectivity test completed successfully on Windows host using COM15 at 115200 baud.
+- Host-side Python test confirmed stable heartbeat and ACK ping responses end-to-end.
+- Git workflow is configured and operational.
+- Docker environment is installed, running, and containers are starting successfully for development.
+- Development plan status transitioned from Week 1 Phase 1 to Week 1 Phase 2 (Physical Hardware Assembly).
 
-> [!TIP]
-> **Goal:** Archiving old files so your workspace is clean, then setting up an isolated Docker Linux environment for ROS to avoid Windows host pathing issues.
-
-1. **File Movement:** Move all legacy, non-MVP test scripts and PDF outputs into `docs_archive/`. Ensure nothing clutters the root of `MVS/`.
-2. **Docker Network & Volume Prep:** 
-   - Write a quick `docker-compose.yml` (or use a raw `docker run` script) to pull a `ros:noetic-ros-base` or `ros:humble-ros-base` (depending on your ROS version).
-   - Mount your serial devices (e.g., `--device=/dev/ttyUSB0` or the Windows equivalent if using WSL2 USB Passthrough) into the container so the Datalogger can see the Arduino.
-3. **Workspace Initialization:** Spin up the container and initialize your catkin or colcon workspace. 
+Week 1 Phase 1 completed on 2026-04-06. Completed serial checklist archived under `docs_archive/`.
 
 ## Phase 2: Physical Hardware Assembly (30 Minutes)
 
@@ -22,17 +20,14 @@ This schedule is optimized for a focused 90-minute block to get your Docker ROS 
 1. **Mounting:** Use zip-ties or a 3D-printed fixture to attach the Arduino Nano 33 BLE firmly to the moving arm of the physical robot. *Do not leave it dangling by the wire, as cable whip will corrupt your IMU baseline.*
 2. **Flashing the BLE:** 
    - Open Arduino IDE.
-   - Flash the `Arduino_LSM9DS1` baseline sketch (polling at ~50 Hz, outputting raw comma-separated values to `Serial.print`).
-3. **Connectivity Verification:** Open the Serial Monitor on your laptop to verify you are getting a clean stream of `x,y,z` for the accelerometer, gyroscope, and magnetometer.
-
-## Phase 3: Build & Test the Datalogger (25 Minutes)
-
-> [!NOTE]
-> **Goal:** Routing data through your Python logger to get the exact 10 columns needed for your ML proposal.
-
-1. **Script Placement:** Put your Python Datalogger script inside the new ROS Docker container (or run natively if Docker USB mapping fights you today).
-2. **Library Checks:** Ensure `pyserial` is installed via `pip`.
-3. **Dry Run:** Boot the script and ensure it successfully detects the COM port, appends an ISO-8601 timestamp, and writes cleanly to `training_data.csv` without throwing Unicode or port busy errors.
+   - Flash `backend/arduino_nano_serial_test/arduino_nano_serial_test.ino`.
+3. **Network Decision (Niryo):**
+   - Yes, use the same network when you need direct Niryo control/ROS2 state integration.
+   - No, same network is not required for USB-only Arduino serial logging on one machine.
+4. **Joint/Location Decision:**
+   - Mount at the wrist-side end-effector region (tool flange area, near final joint), not on base or shoulder joints.
+5. **Connectivity Verification:**
+   - Open Serial Monitor at 115200 baud and confirm each line is 9 comma-separated IMU values: `ax,ay,az,gx,gy,gz,mx,my,mz`.
 
 ## Phase 4: Baseline Execution & Validation (20 Minutes)
 

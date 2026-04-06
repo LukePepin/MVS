@@ -12,6 +12,7 @@ services:
     # Enable interactive terminal access
     stdin_open: true
     tty: true
+    working_dir: /workspace
     
     # Environment variables
     environment:
@@ -27,10 +28,13 @@ services:
 
   app:
     build: .
+    working_dir: /app
     volumes:
       - .:/app
       - ./ros2_ws/build:/app/ros2_ws/build:rw
       - ./ros2_ws/install:/app/ros2_ws/install:rw
+    # NOTE: Windows COM passthrough to Linux containers is often unavailable
+    # in Docker Desktop. Keep serial testing on host unless using WSL USB attach.
     # ...add other service config as needed...
     
     # Capabilities for network operations (scapy, ARP poisoning)
