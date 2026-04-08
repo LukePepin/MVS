@@ -20,7 +20,7 @@ Industry 4.0 relies on centralized cloud authentication, creating critical singl
 
 ### 2.2 The Intelligence Layer (Edge Machine Learning)
 - **Host**: Arduino Nano 33 BLE Sense.
-- **Sensor**: Onboard LSM9DS1 9-Axis IMU.
+- **Sensor (Current Implementation Scope)**: Onboard LSM9DS1 IMU using 6-axis telemetry (accelerometer + gyroscope) with host-side UTC timestamping.
 - **Constraint**: Strict 200KB SRAM maximum footprint.
 - **Mechanism**: A TinyML Autoencoder processes continuous physical telemetry. Given a standard kinematic loop learned via a Unity Digital Twin, any adversarial payload that alters the physical path registers a massive spike in Reconstruction Error.
 
@@ -46,6 +46,13 @@ Industry 4.0 relies on centralized cloud authentication, creating critical singl
 **Phase 4: Hardware Porting & Defense Applications**
 - Quantize the Autoencoder and flash to the Arduino Cortex-M4.
 - Conduct live physical tests under simulated 20% packet loss environments to validate ZKP viability against traditional ECC authentication models.
+
+---
+## Final Goal Update (Implementation Pivot)
+
+- The final demonstrated system is a **hybrid testbed**: real robot/IMU telemetry is ingested in real format and fed into simulated MES node behavior.
+- The mock table and routing engine are retained, but at least one robot node is assigned to real robot telemetry input.
+- Collision events observed during physical runs are treated as anomaly signals for detection and evaluation.
 
 ---
 ## Future Work: Migration to Real Application

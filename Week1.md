@@ -1,39 +1,66 @@
-# 90-Minute Deep Work Session: MVS ROS & Hardware Setup
-Date: 2026-04-04
+# Week 1: MVS ROS, Hardware, and Baseline Data Collection
+Date: 2026-04-08
+Status: In Progress
 
-## Progress Update
-Date: 2026-04-06
+## Week 1 Goals
 
-- Arduino serial connectivity test completed successfully on Windows host using COM15 at 115200 baud.
-- Host-side Python test confirmed stable heartbeat and ACK ping responses end-to-end.
-- Git workflow is configured and operational.
-- Docker environment is installed, running, and containers are starting successfully for development.
-- Development plan status transitioned from Week 1 Phase 1 to Week 1 Phase 2 (Physical Hardware Assembly).
+- Establish physical robot + IMU data pipeline.
+- Execute repeatable robot motion script for nominal behavior capture.
+- Produce baseline training dataset for model development.
+- Integrate architecture pivot decisions into implementation status.
 
-Week 1 Phase 1 completed on 2026-04-06. Completed serial checklist archived under `docs_archive/`.
+## Pivot-Integrated Decisions
 
-## Phase 2: Physical Hardware Assembly (30 Minutes)
+- Baseline collection mode for Week 1 is 6-axis host CSV (Accel + Gyro + host UTC timestamp).
+- Collision events observed during runs are not discarded; they will be treated as anomaly events in later model phases.
+- GPIO hardwired emergency-stop path from Arduino to Ned2 remains required and is still pending.
 
-> [!IMPORTANT]
-> **Goal:** Secure physical setup of the Arduino Nano 33 BLE onto the end-effector.
+## Evidence Collected
 
-1. **Mounting:** Use zip-ties or a 3D-printed fixture to attach the Arduino Nano 33 BLE firmly to the moving arm of the physical robot. *Do not leave it dangling by the wire, as cable whip will corrupt your IMU baseline.*
-2. **Flashing the BLE:** 
-   - Open Arduino IDE.
-   - Flash `backend/arduino_nano_serial_test/arduino_nano_serial_test.ino`.
-3. **Network Decision (Niryo):**
-   - Yes, use the same network when you need direct Niryo control/ROS2 state integration.
-   - No, same network is not required for USB-only Arduino serial logging on one machine.
-4. **Joint/Location Decision:**
-   - Mount at the wrist-side end-effector region (tool flange area, near final joint), not on base or shoulder joints.
-5. **Connectivity Verification:**
-   - Open Serial Monitor at 115200 baud and confirm each line is 9 comma-separated IMU values: `ax,ay,az,gx,gy,gz,mx,my,mz`.
+- Robot motion script running with pose validation and collision recovery:
+   - `backend/MVS_data_collection.py`
+- Datalogger supports reconnect behavior and COM failover (COM9 and COM14):
+   - `backend/phase2_datalogger.py`
+- Continuous baseline dataset available:
+   - `backend/data/training_data_0001.csv`
+- Architecture pivot reference:
+   - `architecturepivot.md`
 
-## Phase 4: Baseline Execution & Validation (20 Minutes)
+## Checklist
 
-> [!CAUTION]
-> **Goal:** Gathering real data. Stay clear of the robotic envelope while the nominal loop executes.
+### Phase 1: Serial and Host Pipeline
 
-1. **Execution Loop:** Command your robot (via ROS or its native pendant) to execute the standardized kinematic loop continuously.
-2. **Data Logging:** Track the loop for 15 minutes, allowing your Datalogger to accumulate a solid starting baseline (a few thousand rows).
-3. **Teardown & Verification:** After stopping the robot, open `training_data.csv` and ensure all rows have 10 columns and timestamps are incrementing as expected.
+- [x] Arduino serial connectivity verified on Windows host.
+- [x] Host datalogger captures IMU rows with UTC timestamp.
+- [x] CSV schema aligned for 6-axis baseline collection.
+- [x] Reconnect logic added for serial disconnects.
+
+### Phase 2: Physical Hardware Assembly
+
+- [x] Arduino mounted at wrist/end-effector region.
+- [x] Robot saved poses validated and executable.
+- [x] Calibration workflow tested before motion run.
+- [ ] GPIO emergency-stop wiring (Arduino to Ned2 GPIO) completed.
+- [ ] GPIO emergency-stop validation test executed and documented.
+
+### Phase 4: Baseline Execution and Validation
+
+- [x] Continuous nominal loop executed and logged.
+- [x] Baseline data artifact created: training_data_0001.csv.
+- [x] Collision handling added in motion script (clear and retry once).
+- [ ] Collision event boundaries formally annotated in dataset metadata file.
+- [ ] Final Week 1 sign-off after GPIO safety checklist completion.
+
+## Known Issues and Mitigations
+
+- USB serial instability observed (port flips and intermittent disconnects).
+   - Mitigation: fallback ports and reconnect logic in datalogger.
+- Collision event occurred around minute 21 in one run.
+   - Mitigation: automatic collision-clear retry implemented.
+   - Forward use: treat these events as anomaly candidates.
+
+## TODO Carry-Over
+
+1. Complete GPIO emergency-stop wiring and bench validation.
+2. Add explicit event annotation file for collision timestamps.
+3. Keep data output path standardized at `backend/data` for all new runs.

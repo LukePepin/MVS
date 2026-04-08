@@ -20,8 +20,8 @@ Date: 2026-04-06
 - Definition: A live software representation of manufacturing states, inventory queues, and routing logic used for monitoring and decision support.
 - Speaker note: Clarify that this twin is behaviorally aligned for decision support, not a perfect physics simulator.
 
-5. IMU Telemetry (9-axis)
-- Definition: Accelerometer (x,y,z), gyroscope (x,y,z), and magnetometer (x,y,z) signals collected from Arduino Nano 33 BLE for motion-state and anomaly analysis.
+5. IMU Telemetry (6-axis)
+- Definition: Accelerometer (x,y,z) and gyroscope (x,y,z) signals collected from Arduino Nano 33 BLE for motion-state and anomaly analysis, with host-generated UTC timestamp.
 - Speaker note: This is the raw observable used for baseline and anomaly detection.
 
 6. Telemetry Translation Engine
@@ -34,7 +34,7 @@ Date: 2026-04-06
 
 8. Work Center State Model
 - Definition: Node status categories such as Idle, Busy, Blocked, and Offline used by the testbed and dashboard.
-- Speaker note: Keep this model consistent between mock and live modes.
+- Speaker note: Keep this model consistent inside the hybrid mode where real telemetry feeds simulated node behavior.
 
 9. Baseline Dataset
 - Definition: Nominal-operation IMU samples collected under standard robot motion loops for training and validating anomaly methods.
@@ -53,8 +53,8 @@ Date: 2026-04-06
 
 2. Data path
 - Sensor output: Arduino serial prints IMU CSV rows.
-- Host processing: Python reads serial, appends timestamp/NodeID, writes `training_data.csv`.
-- Dashboard feed: Backend publishes machine/inventory/telemetry status to frontend.
+- Host processing: Python reads serial, appends timestamp/NodeID, writes incrementing CSV files in `backend/data`.
+- Dashboard feed: Backend publishes hybrid telemetry + simulated node state to frontend.
 
 3. Current status (April 6, 2026)
 - Arduino serial connectivity validated on COM15 at 115200 baud.
@@ -81,16 +81,16 @@ MVS is a practical pilot system that watches how a robotic manufacturing setup b
 
 ## Project Explanation: Undergraduate Audience
 
-MVS is an integrated cyber-physical pipeline for manufacturing observability. The Arduino Nano 33 BLE collects 9-axis IMU signals, which are streamed over serial to a Python/ FastAPI backend. The backend normalizes telemetry, stores operational records, and serves a React dashboard with machine states and queue depths. A mock EARC testbed provides deterministic process-state simulation, while the physical path provides real motion telemetry for baseline collection and anomaly experiments. In short, MVS demonstrates how to connect embedded sensing, async backend services, and a visualization layer into one reproducible system.
+MVS is an integrated cyber-physical pipeline for manufacturing observability. The Arduino Nano 33 BLE collects 6-axis IMU signals, which are streamed over serial to a Python/FastAPI backend. The backend normalizes telemetry, stores operational records, and serves a React dashboard with machine states and queue depths. The demonstrated architecture is a hybrid testbed: simulated process-state nodes remain active while at least one robot node is driven by real telemetry from physical execution loops. In short, MVS demonstrates how to connect embedded sensing, async backend services, and a visualization layer into one reproducible system.
 
 ## Project Explanation: Graduate Audience
 
-MVS operationalizes a constrained MES-aligned architecture for distributed manufacturing observability under realistic integration and DIL-adjacent assumptions. The system combines: (a) physical 9-DoF IMU telemetry from an end-effector-mounted Nano 33 BLE, (b) an asynchronous FastAPI ingestion/translation layer with persistent state, and (c) a dual-mode digital twin interface that unifies simulated and live operational semantics (Idle/Busy/Blocked/Offline, queue-depth propagation, and routing state). The methodological emphasis is representation fidelity across interfaces: serial/ROS2-origin signals are translated into a stable dashboard schema, enabling longitudinal baseline capture and subsequent anomaly detection workflows. The research contribution is not novelty in individual components, but in robust end-to-end coupling, schema consistency, and verifiable transition from synthetic to physical telemetry in a manufacturing context.
+MVS operationalizes a constrained MES-aligned architecture for distributed manufacturing observability under realistic integration and DIL-adjacent assumptions. The system combines: (a) physical 6-DoF IMU telemetry from an end-effector-mounted Nano 33 BLE, (b) an asynchronous FastAPI ingestion/translation layer with persistent state, and (c) a hybrid digital twin interface where simulated node semantics (Idle/Busy/Blocked/Offline, queue-depth propagation, routing state) are driven by real telemetry inputs. The methodological emphasis is representation fidelity across interfaces: serial/ROS2-origin signals are translated into a stable dashboard schema, enabling longitudinal baseline capture and subsequent anomaly detection workflows. The research contribution is not novelty in individual components, but in robust end-to-end coupling, schema consistency, and verifiable transition from synthetic to physically sourced telemetry in a manufacturing context.
 
 ## Demo Talking Points (Speaker Notes)
 
 1. Start with architecture in one sentence
-- "Sensor to backend to dashboard, with the same state model in both mock and live modes."
+- "Sensor to backend to dashboard, with real telemetry driving a simulated-node hybrid state model."
 
 2. Show one queue bottleneck and one recovery
 - Explain queue depth growth, then return to nominal flow.

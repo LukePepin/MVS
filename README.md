@@ -15,12 +15,12 @@ uvicorn backend.app.main:app --host 0.0.0.0 --port 8000
 
 ### Backend behavior
 - UDP listener bound to `0.0.0.0:5005`
-- Parses 9-axis float32 payload using network big-endian (`!9f`)
+- Parses incoming telemetry and normalizes to the project schema
 - Uses non-blocking queue handoff from UDP callback to async writer
-- Writes telemetry to `training_data.csv` using `aiofiles`
+- Writes telemetry to CSV and SQLite for downstream analysis
 - Persists telemetry to SQLite via SQLAlchemy async + `aiosqlite`
 - Serves `/dashboard_data` as a single async JSON payload
-- Serves `/mock/dashboard_data` with simulated EARC work-center state transitions
+- Serves `/mock/dashboard_data` as the primary hybrid testbed feed
 
 ## Frontend (React + Tailwind utility classes)
 
@@ -31,6 +31,29 @@ npm run dev -- --host 0.0.0.0 --port 5173
 ```
 
 Dashboard component polls `http://localhost:8000/dashboard_data` every 1000ms.
+
+## Arduino Nano 6-Axis CSV Capture
+
+Use `backend/arduino_nano_6axis_csv_stream/arduino_nano_6axis_csv_stream.ino` on the Nano 33 BLE for initial accel+gyro CSV capture.
+
+1. Flash the 6-axis sketch to the board.
+2. Find the serial port:
+
+```powershell
+python backend/phase2_datalogger.py --list-ports
+```
+
+3. Capture 60 seconds to CSV (host appends UTC timestamp):
+
+```powershell
+python backend/phase2_datalogger.py --port COM15 --baud 115200 --axes 6 --duration 60 --out auto --node-id niryo-wrist-imu
+```
+
+Default `--out auto` writes incrementing files to `backend/data/training_data_XXXX.csv`.
+
+Expected serial row format from the sketch:
+
+`ax,ay,az,gx,gy,gz`
 
 ## CI Docker Publish (GHCR)
 
@@ -44,10 +67,9 @@ If you see `permission_denied: write_package`, verify the following:
 
 The workflow prefers `GHCR_TOKEN` when available and falls back to `GITHUB_TOKEN`.
 
-## Telemetry Modes
+## Telemetry Mode (Primary)
 
-- `Live Mode` (default): frontend polls `/dashboard_data`
-- `Mock Testbed Mode`: frontend polls `/mock/dashboard_data` and animates package flow in the 2D schematic visualizer
+- `Hybrid Testbed Mode` (primary and singular mode): frontend polls `/mock/dashboard_data`, where simulated node behavior is preserved while one robot node is designated to consume real robot telemetry as integration work progresses.
 
 ## Testbed Implementation Status
 
