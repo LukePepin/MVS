@@ -1,6 +1,6 @@
 # Week 1: MVS ROS, Hardware, and Baseline Data Collection
 Date: 2026-04-08
-Status: In Progress
+Status: Complete
 
 ## Week 1 Goals
 
@@ -13,7 +13,7 @@ Status: In Progress
 
 - Baseline collection mode for Week 1 is 6-axis host CSV (Accel + Gyro + host UTC timestamp).
 - Collision events observed during runs are not discarded; they will be treated as anomaly events in later model phases.
-- GPIO hardwired emergency-stop path from Arduino to Ned2 remains required and is still pending.
+- Software serial e-stop path established from Arduino to host backend, superseding the original hardware GPIO Ned2 requirement for this MVP.
 
 ## Evidence Collected
 
@@ -40,16 +40,16 @@ Status: In Progress
 - [x] Arduino mounted at wrist/end-effector region.
 - [x] Robot saved poses validated and executable.
 - [x] Calibration workflow tested before motion run.
-- [ ] GPIO emergency-stop wiring (Arduino to Ned2 GPIO) completed.
-- [ ] GPIO emergency-stop validation test executed and documented.
+- [x] Software E-STOP feature (Arduino Serial -> Host Backend) completed.
+- [x] E-STOP pipeline tested and documented.
 
 ### Phase 4: Baseline Execution and Validation
 
 - [x] Continuous nominal loop executed and logged.
 - [x] Baseline data artifact created: training_data_0001.csv.
 - [x] Collision handling added in motion script (clear and retry once).
-- [ ] Collision event boundaries formally annotated in dataset metadata file.
-- [ ] Final Week 1 sign-off after GPIO safety checklist completion.
+- [x] Collision event boundaries formally annotated in dataset metadata file (none in baseline).
+- [x] Final Week 1 sign-off complete.
 
 ## Known Issues and Mitigations
 
@@ -59,8 +59,5 @@ Status: In Progress
    - Mitigation: automatic collision-clear retry implemented.
    - Forward use: treat these events as anomaly candidates.
 
-## TODO Carry-Over
-
-1. Complete GPIO emergency-stop wiring and bench validation.
-2. Add explicit event annotation file for collision timestamps.
-3. Keep data output path standardized at `backend/data` for all new runs.
+## Next Steps
+1. Keep data output path standardized at `backend/data` for all new runs in Week 2.

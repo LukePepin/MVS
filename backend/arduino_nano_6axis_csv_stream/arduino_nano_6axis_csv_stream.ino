@@ -48,6 +48,12 @@ void loop() {
   IMU.readAcceleration(ax, ay, az);
   IMU.readGyroscope(gx, gy, gz);
 
+  // Software E-STOP over Serial threshold
+  float magnitude = sqrt(ax*ax + ay*ay + az*az);
+  if (magnitude > 4.0f) {
+    Serial.println("ESTOP:COLLISION");
+  }
+
   Serial.print(ax, 6);
   Serial.print(',');
   Serial.print(ay, 6);

@@ -127,7 +127,7 @@ const SchematicVisualizer = ({ schematic }) => {
 
                         {/* Queue backlog warning specifically for inventory buffers */}
                         {node.type === "inventory" && node.queue_depth > 0 && (
-                            <div className="absolute -left-2 -top-2 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-600 text-[10px] font-bold text-white shadow-[0_0_8px_rgba(220,38,38,0.8)] animate-bounce border border-red-300 title='Queue Backlog!'>
+                            <div className="absolute -left-2 -top-2 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-600 text-[10px] font-bold text-white shadow-[0_0_8px_rgba(220,38,38,0.8)] animate-bounce border border-red-300" title="Queue Backlog!">
                                 !{node.queue_depth}
                             </div>
                         )}

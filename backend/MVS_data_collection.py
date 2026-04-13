@@ -12,6 +12,7 @@ Sequence per cycle:
 from __future__ import annotations
 
 import argparse
+from pathlib import Path
 import random
 import sys
 import time
@@ -166,6 +167,10 @@ def run_sequence(
     group4: list[str],
 ) -> None:
     for cycle in range(1, repeats + 1):
+        if Path(__file__).parent.joinpath("estop.flag").exists():
+            print("Software E-STOP flag detected! Closing out robot actions.")
+            break
+
         print(f"[{cycle}/{repeats}] Moving to {HOME_POSE_NAME}")
         if not dry_run:
             move_to_pose_name(robot, HOME_POSE_NAME)
@@ -193,6 +198,7 @@ def run_sequence(
         if not dry_run:
             move_to_pose_name(robot, p4)
         time.sleep(sleep_s)
+
 
 
 def build_parser() -> argparse.ArgumentParser:

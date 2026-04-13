@@ -194,6 +194,11 @@ def run_datalogger(
                                     f"No serial data for {no_data_timeout_s:.1f}s on {current_port}"
                                 )
                             continue
+                            
+                        if raw.startswith("ESTOP:"):
+                            print(f"\n[!] E-STOP received from Arduino: {raw}")
+                            Path(__file__).parent.joinpath("estop.flag").touch()
+                            continue
 
                         parsed = parse_imu_line(raw, expected_columns=axes)
                         if parsed is None:
