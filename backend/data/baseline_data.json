@@ -1,0 +1,8 @@
+{
+    "dataset": "baseline_data",
+    "description": "Baseline nominal runs for autoencoder training.",
+    "anomalies": {
+        "collision_events": []
+    },
+    "notes": "No collision boundaries occur in this baseline. Collisions encountered during data collection triggered automatic recovery (in script) or the software ESTOP pipeline, meaning they are excluded from the nominal run data."
+}
