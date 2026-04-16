@@ -1,0 +1,29 @@
+[
+  {
+    "status": "ok",
+    "window_config": "ws512_st16_thr0p25",
+    "window_size": 512,
+    "window_stride": 16,
+    "window_threshold": 0.25,
+    "drop_ambiguous": false,
+    "window_train_rows": 3732,
+    "window_val_rows": 799,
+    "window_test_rows": 802,
+    "run_dir": "C:\\Users\\lukep\\Documents\\MVS\\backend\\ml\\anomaly_detection\\results\\week2\\window_sweep_results\\window_configs\\ws512_st16_thr0p25",
+    "run_tag": "thr85p0_it250_h384-192-384_seed7",
+    "threshold_percentile": 85.0,
+    "max_iter": 250,
+    "hidden_layers": "384,192,384",
+    "seed": 7,
+    "artifact_dir": "C:\\Users\\lukep\\Documents\\MVS\\backend\\ml\\anomaly_detection\\results\\week2\\window_sweep_results\\window_configs\\ws512_st16_thr0p25\\model_runs\\thr85p0_it250_h384-192-384_seed7",
+    "threshold": 0.185677632689476,
+    "test_f1": 0.8664772727272727,
+    "test_precision": 1.0,
+    "test_recall": 0.7644110275689223,
+    "test_fpr_normal": 0.0,
+    "val_f1": 0.532051282051282,
+    "val_precision": 0.7345132743362832,
+    "val_recall": 0.41708542713567837,
+    "val_fpr_normal": 0.14962593516209477
+  }
+]
