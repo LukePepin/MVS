@@ -47,7 +47,9 @@ def fmt_float_for_tag(value: float) -> str:
 
 def parse_args() -> argparse.Namespace:
     script_dir = Path(__file__).resolve().parent
-    default_root = script_dir / "window_sweep_results"
+    project_root = script_dir.parent
+    default_data_root = project_root / "data" / "week2"
+    default_root = project_root / "results" / "week2" / "window_sweep_results"
 
     parser = argparse.ArgumentParser(
         description="Automate window config generation + train_window_model sweeps"
@@ -70,12 +72,12 @@ def parse_args() -> argparse.Namespace:
 
     parser.add_argument(
         "--baseline-csv",
-        default=str(script_dir / "baseline_labeled.csv"),
+        default=str(default_data_root / "baseline_labeled.csv"),
         help="Path to baseline labeled CSV",
     )
     parser.add_argument(
         "--adversarial-csv",
-        default=str(script_dir / "adversarial_labeled.csv"),
+        default=str(default_data_root / "adversarial_labeled.csv"),
         help="Path to adversarial labeled CSV",
     )
 

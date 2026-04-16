@@ -284,6 +284,6 @@ builds/
 .REPRODUCIBILITY_REPORT.txt
 
 # Week 2 sweep-generated model artifacts (large, reproducible)
-backend/data/week2/window_sweep_results/window_configs/
-backend/data/week2/window_sweep_results/**/model_runs/
-backend/data/week2/window_runs/
+backend/ml/anomaly_detection/results/week2/window_sweep_results/window_configs/
+backend/ml/anomaly_detection/results/week2/window_sweep_results/**/model_runs/
+backend/ml/anomaly_detection/results/week2/window_runs/

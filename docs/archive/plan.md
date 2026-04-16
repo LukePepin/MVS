@@ -51,12 +51,12 @@ Provide a resilient Level 3 MES that can:
 - Completed: Defined assumed EARC topology for triangular branch/merge flow.
 - Completed: Updated mock telemetry flow model with dynamic part-family routing and rework injection.
 - Completed: Aligned frontend schematic rendering to backend coordinates and connector states.
-- Completed: Authored comprehensive testbed design document (`testbed.md`).
+- Completed: Authored comprehensive testbed design document (`docs/design/testbed.md`).
 - Completed: Ran validation checks on updated backend/frontend files.
 
 ### Documentation
 - README with startup commands and mode descriptions.
-- testbed.md with assumptions, flow model, and technical rationale.
+- docs/design/testbed.md with assumptions, flow model, and technical rationale.
 - testbedlayout.md with user-authored graph variant.
 
 ## 4. Architecture Plan
@@ -250,7 +250,7 @@ Acceptance Criteria:
 - [x] Working backend live ingest + dashboard endpoint.
 - [x] Working mock endpoint and branch/merge simulation.
 - [x] Frontend mode toggle and schematic visualizer.
-- [x] testbed.md assumptions and rationale.
+- [x] docs/design/testbed.md assumptions and rationale.
 - [x] testbedlayout.md custom topology draft.
 - [x] plan.md consolidated program plan (this document).
 

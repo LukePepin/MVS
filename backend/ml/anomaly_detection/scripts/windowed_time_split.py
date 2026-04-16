@@ -31,9 +31,12 @@ FEATURE_COLS = [
 
 def parse_args() -> argparse.Namespace:
     script_dir = Path(__file__).resolve().parent
+    project_root = script_dir.parent
+    data_root = project_root / "data" / "week2"
+    results_root = project_root / "results" / "week2"
     parser = argparse.ArgumentParser(description="Build windowed chronological splits")
-    parser.add_argument("--baseline-csv", default=str(script_dir / "baseline_labeled.csv"))
-    parser.add_argument("--adversarial-csv", default=str(script_dir / "adversarial_labeled.csv"))
+    parser.add_argument("--baseline-csv", default=str(data_root / "baseline_labeled.csv"))
+    parser.add_argument("--adversarial-csv", default=str(data_root / "adversarial_labeled.csv"))
     parser.add_argument("--window-size", type=int, default=64)
     parser.add_argument("--stride", type=int, default=16)
     parser.add_argument("--threshold", type=float, default=0.30, help="Window labeled 1 if anomaly_fraction >= threshold")
@@ -41,7 +44,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--train-ratio", type=float, default=0.70)
     parser.add_argument("--val-ratio", type=float, default=0.15)
     parser.add_argument("--test-ratio", type=float, default=0.15)
-    parser.add_argument("--output-root", default=str(script_dir / "window_runs"))
+    parser.add_argument("--output-root", default=str(results_root / "window_runs"))
     return parser.parse_args()
 
 

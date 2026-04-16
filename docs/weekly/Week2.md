@@ -8,7 +8,7 @@ Status: Completed (Closeout on 2026-04-16)
 
 - Full sweep completed with consolidated output size: 972 runs evaluated.
 - Final selection artifact regenerated from latest consolidated results:
-  - `backend/data/week2/window_sweep_results/summaries/best_setting.json`
+  - `backend/ml/anomaly_detection/results/week2/window_sweep_results/summaries/best_setting.json`
 
 ### Final Chosen Configuration
 
@@ -40,10 +40,10 @@ Status: Completed (Closeout on 2026-04-16)
 
 ### Reproducibility Command (Selector)
 
-Run from `backend/data/week2`:
+Run from `backend/ml/anomaly_detection/scripts`:
 
 ```powershell
-python .\find_best_sweep_setting.py --csv .\window_sweep_results\summaries\consolidated_sweep.csv --status ok
+python .\find_best_sweep_setting.py --csv ..\results\week2\window_sweep_results\summaries\consolidated_sweep.csv --status ok
 ```
 
 ### Week 2 Limitations Noted

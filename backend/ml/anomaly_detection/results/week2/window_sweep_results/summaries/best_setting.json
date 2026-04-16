@@ -1,6 +1,6 @@
-{
+﻿{
   "created_at": "2026-04-16T12:13:55.033622+00:00",
-  "source_csv": "C:\\Users\\lukep\\Documents\\MVS\\backend\\data\\week2\\window_sweep_results\\summaries\\consolidated_sweep.csv",
+  "source_csv": "C:\\Users\\lukep\\Documents\\MVS\\backend\\ml\\anomaly_detection\\results\\week2\\window_sweep_results\\summaries\\consolidated_sweep.csv",
   "row_count": 972,
   "filtered_row_count": 970,
   "criteria": {
@@ -22,7 +22,7 @@
     "window_train_rows": "3765",
     "window_val_rows": "807",
     "window_test_rows": "809",
-    "run_dir": "C:\\Users\\lukep\\Documents\\MVS\\backend\\data\\week2\\window_sweep_results\\window_configs\\ws128_st16_thr0p25",
+    "run_dir": "C:\\Users\\lukep\\Documents\\MVS\\backend\\ml\\anomaly_detection\\results\\week2\\window_sweep_results\\window_configs\\ws128_st16_thr0p25",
     "run_tag": "thr87p5_it250_h384-192-384_seed42",
     "threshold_percentile": "87.5",
     "max_iter": "250",
@@ -37,6 +37,6 @@
     "val_precision": "0.6772151898734177",
     "val_recall": "0.26616915422885573",
     "val_fpr_normal": "0.1259259259259259",
-    "artifact_dir": "C:\\Users\\lukep\\Documents\\MVS\\backend\\data\\week2\\window_sweep_results\\window_configs\\ws128_st16_thr0p25\\model_runs\\thr87p5_it250_h384-192-384_seed42"
+    "artifact_dir": "C:\\Users\\lukep\\Documents\\MVS\\backend\\ml\\anomaly_detection\\results\\week2\\window_sweep_results\\window_configs\\ws128_st16_thr0p25\\model_runs\\thr87p5_it250_h384-192-384_seed42"
   }
 }

@@ -18,8 +18,10 @@ from pathlib import Path
 
 def parse_args() -> argparse.Namespace:
     script_dir = Path(__file__).resolve().parent
-    default_csv = script_dir / "window_sweep_results" / "summaries" / "consolidated_sweep.csv"
-    default_out = script_dir / "window_sweep_results" / "summaries" / "best_setting.json"
+    project_root = script_dir.parent
+    summaries_root = project_root / "results" / "week2" / "window_sweep_results" / "summaries"
+    default_csv = summaries_root / "consolidated_sweep.csv"
+    default_out = summaries_root / "best_setting.json"
 
     parser = argparse.ArgumentParser(description="Find best setting from consolidated sweep CSV")
     parser.add_argument("--csv", default=str(default_csv), help="Path to consolidated_sweep.csv")

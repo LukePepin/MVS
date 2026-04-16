@@ -2,12 +2,15 @@
 import csv
 from pathlib import Path
 
+SCRIPT_DIR = Path(__file__).resolve().parent
+DATA_DIR = SCRIPT_DIR.parent / "data" / "week2"
+
 # Inputs (existing files)
-BASELINE_IN = Path("baseline_data.csv")
-ADVERSARIAL_IN = Path("adversarial_data.csv")
+BASELINE_IN = DATA_DIR / "baseline_data.csv"
+ADVERSARIAL_IN = DATA_DIR / "adversarial_data.csv"
 
 # Outputs (new files)
-OUT_DIR = Path("")
+OUT_DIR = DATA_DIR
 BASELINE_OUT = OUT_DIR / "baseline_labeled.csv"
 ADVERSARIAL_OUT = OUT_DIR / "adversarial_labeled.csv"
 COMBINED_OUT = OUT_DIR / "week2_labeled_all.csv"

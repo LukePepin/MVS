@@ -16,8 +16,9 @@ import pandas as pd
 
 def parse_args() -> argparse.Namespace:
     script_dir = Path(__file__).resolve().parent
+    project_root = script_dir.parent
     parser = argparse.ArgumentParser(description="Compare window run manifests")
-    parser.add_argument("--runs-root", default=str(script_dir / "window_runs"))
+    parser.add_argument("--runs-root", default=str(project_root / "results" / "week2" / "window_runs"))
     parser.add_argument("--out-csv", default="window_runs_comparison.csv")
     parser.add_argument("--out-json", default="window_runs_comparison.json")
     return parser.parse_args()

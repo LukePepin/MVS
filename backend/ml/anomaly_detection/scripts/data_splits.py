@@ -96,7 +96,8 @@ def main() -> None:
     validate_ratios(args.train_ratio, args.val_ratio, args.test_ratio)
 
     input_csv = Path(args.input_csv)
-    out_dir = Path(__file__).resolve().parent
+    script_dir = Path(__file__).resolve().parent
+    out_dir = script_dir.parent / "data" / "week2"
 
     train_path = out_dir / "train.csv"
     val_path = out_dir / "val.csv"

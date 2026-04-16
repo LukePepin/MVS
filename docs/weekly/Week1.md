@@ -24,7 +24,7 @@ Status: Complete
 - Continuous baseline dataset available:
    - `backend/data/training_data_0001.csv`
 - Architecture pivot reference:
-   - `architecturepivot.md`
+   - `docs/design/architecturepivot.md`
 
 ## Checklist
 

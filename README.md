@@ -76,7 +76,7 @@ The workflow prefers `GHCR_TOKEN` when available and falls back to `GITHUB_TOKEN
 - Completed: Assumed EARC triangular branch/merge topology
 - Completed: Mock telemetry flow model with dynamic routing, block/offline states, and rework path injection
 - Completed: Frontend schematic rendering aligned to backend node coordinates and connectors
-- Completed: Testbed architecture documentation in `testbed.md`
+- Completed: Testbed architecture documentation in `docs/design/testbed.md`
 - Completed: Validation checks (backend and frontend editor diagnostics clean)
 
 ## Mock Model Notes
