@@ -12,21 +12,21 @@ Status: Completed (Closeout on 2026-04-16)
 
 ### Final Chosen Configuration
 
-- `window_config`: `ws128_st16_thr0p25`
-- `run_tag`: `thr87p5_it250_h384-192-384_seed42`
-- `window_size`: 128
+- `window_config`: `ws512_st16_thr0p25`
+- `run_tag`: `thr85p0_it250_h384-192-384_seed42`
+- `window_size`: 512
 - `window_stride`: 16
 - `window_threshold`: 0.25
-- `threshold_percentile`: 87.5
+- `threshold_percentile`: 85.0
 - `max_iter`: 250
 - `hidden_layers`: `384,192,384`
 - `seed`: 42
 
 ### Final Metrics (Test)
 
-- `test_f1`: 0.6677685950413224
+- `test_f1`: 0.8680851063829788
 - `test_precision`: 1.0
-- `test_recall`: 0.5012406947890818
+- `test_recall`: 0.7669172932330827
 - `test_fpr_normal`: 0.0
 
 ### Decision Rationale
@@ -53,8 +53,8 @@ python .\find_best_sweep_setting.py --csv ..\results\week2\window_sweep_results\
 
 ### Week 3 Quantitative Target
 
-- Primary target: increase recall into the 0.65-0.75 range.
-- Constraint: keep false positive behavior tightly controlled.
+- Primary target: improve recall and F1 while maintaining tightly controlled false positives.
+- Team task: search for better variable combinations (windowing, threshold percentile, architecture), then test and validate the results.
 - Maintain reproducibility using fixed seed and explicit config documentation.
 
 ## Week 2 Objective
