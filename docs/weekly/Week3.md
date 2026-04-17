@@ -1,6 +1,6 @@
 # Week 3: Hybrid Mode Integration and Validation
-Date: 2026-04-08
-Status: Planned
+Date: 2026-04-17
+Status: In Progress
 
 ## Week 3 Objective
 
@@ -27,13 +27,16 @@ Implement and validate **Live Mode** where physical 6-axis robot telemetry strea
 - Define a single canonical payload contract for dashboard consumption.
 - Keep simulated node table and routing engine active.
 - Mark one robot node as telemetry-backed (real source) and include source metadata in payload.
+- Add numeric `schema_version` at payload root.
+- Ensure per-node timestamps include `host_time` and optional `device_time`.
 
 ### 2. Live Mode Telemetry Mapping (Node R6)
 
 - Hardcode the testbed integration specifically to node **R6**.
 - Directly stream the raw 6-axis IMU packet through the backend to the UI for this node.
-- Do NOT translate physical IMU data into discrete state enums (e.g., skip `Idle`, `Busy`) for R6. The frontend UI will display the raw continuous metrics for R6 instead.
-- Ensure host sequence timestamps propagate cleanly through the live stream payload.
+- Derive `status` from IMU thresholds (Busy if accel or gyro exceeds threshold), otherwise Idle.
+- If `device_time` is missing, force `status = Disconnected` and freeze the last sample.
+- Ensure host timestamps propagate cleanly through the live stream payload.
 
 ### 3. Anomaly Signal Path
 
@@ -48,6 +51,8 @@ Implement and validate **Live Mode** where physical 6-axis robot telemetry strea
 - Node assignment test (real-backed robot node updates as expected).
 - Live-stream USB disconnect/reconnect behavior test.
 - Timestamp monotonicity and gap-threshold checks under hybrid flow.
+- Mode toggle test (Mock vs Hybrid) to verify schema stability and R6 override.
+- Evidence capture checklist: screenshots, payload snippets, and log excerpts.
 
 ### 5. Deliverables
 
@@ -62,3 +67,22 @@ Implement and validate **Live Mode** where physical 6-axis robot telemetry strea
 - The UI exposes raw 6-axis IMU strings for node R6 while the rest of the Mock Bed remains simulated.
 - Collision anomaly windows from the live stream successfully branch into the evaluation pipeline.
 - Integration tests pass with documented evidence of correct Live Mode bridging.
+- Validation evidence (screenshots + logs) is archived in Week 3 notes.
+
+## Work Completed (as of 2026-04-17)
+
+- Added hybrid backend endpoint with serial ingest and host/device timestamp handling.
+- Implemented schema_version at payload root and per-node source metadata.
+- Added stale timeout behavior for live telemetry and disconnect handling.
+- Updated frontend to consume hybrid endpoint and surface R6 live telemetry panel.
+- Adjusted mock testbed layout and inspection buffers (Q-IA/Q-IB) plus routing metadata.
+- Added reset endpoint and reduced spawn rate to prevent mock lockups.
+- Added scripts to start backend/frontend and run hybrid/mock scenario tests.
+- Added Vitest + frontend tests and backend mock scenario tests.
+- Refined dashboard layout (analytics right, work orders below model) and reduced margins.
+
+## Open Items
+
+- Confirm final node alignment for Q-IA/Q-IB and inspection column.
+- Capture evidence artifacts (screenshots, payload snapshots, logs) for Week 3 exit criteria.
+- Run full test checklist and record results in Week 3 notes.

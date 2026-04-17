@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 
-const LIVE_ENDPOINT = "http://localhost:8000/dashboard_data";
+const HYBRID_ENDPOINT = "http://localhost:8000/hybrid/dashboard_data";
 const MOCK_ENDPOINT = "http://localhost:8000/mock/dashboard_data";
 
 const initialData = {
-  mode: "live",
+  mode: "hybrid",
   cloud_status: false,
   local_mesh_status: false,
   work_orders: [],
@@ -16,7 +16,7 @@ const initialData = {
 };
 
 export const useTelemetry = () => {
-  const [mode, setMode] = useState("live");
+  const [mode, setMode] = useState("hybrid");
   const [data, setData] = useState(initialData);
   const [error, setError] = useState("");
 
@@ -24,7 +24,7 @@ export const useTelemetry = () => {
     let active = true;
 
     const fetchTelemetry = async () => {
-      const endpoint = mode === "mock" ? MOCK_ENDPOINT : LIVE_ENDPOINT;
+      const endpoint = mode === "mock" ? MOCK_ENDPOINT : HYBRID_ENDPOINT;
 
       try {
         const response = await fetch(endpoint, {
@@ -69,7 +69,10 @@ export const useTelemetry = () => {
     };
   }, [mode]);
 
-  const endpoint = useMemo(() => (mode === "mock" ? MOCK_ENDPOINT : LIVE_ENDPOINT), [mode]);
+  const endpoint = useMemo(
+    () => (mode === "mock" ? MOCK_ENDPOINT : HYBRID_ENDPOINT),
+    [mode]
+  );
 
   return {
     mode,

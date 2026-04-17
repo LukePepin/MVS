@@ -1,5 +1,6 @@
 import asyncio
 import contextlib
+import math
 import struct
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -7,13 +8,22 @@ from pathlib import Path
 from typing import Any
 
 import aiofiles
+import serial
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import insert, select
 
 from .config import (
     CSV_QUEUE_MAXSIZE,
+    HYBRID_SCHEMA_VERSION,
     MAX_MTTR_MS,
+    SERIAL_BAUD,
+    SERIAL_ENABLED,
+    SERIAL_NODE_ID,
+    SERIAL_PORT,
+    SERIAL_READ_TIMEOUT_S,
+    SERIAL_RECONNECT_WAIT_S,
+    SERIAL_STALE_TIMEOUT_S,
     TRAINING_DATA_FILE,
     UDP_PACKET_BYTES,
     UDP_PACKET_FORMAT,
@@ -38,6 +48,19 @@ class TelemetryPacket:
     mag_y: float
     mag_z: float
     timestamp_iso: str
+
+
+@dataclass(slots=True)
+class LiveImuSample:
+    accel_x: float
+    accel_y: float
+    accel_z: float
+    gyro_x: float
+    gyro_y: float
+    gyro_z: float
+    host_time_iso: str
+    device_time_iso: str | None
+    host_time_monotonic: float
 
 
 class TelemetryDatagramProtocol(asyncio.DatagramProtocol):
@@ -106,6 +129,8 @@ async def startup_event() -> None:
     }
     app.state.stop_event = asyncio.Event()
     app.state.mock_engine = MockTelemetryEngine()
+    app.state.live_imu_sample: LiveImuSample | None = None
+    app.state.live_imu_lock = asyncio.Lock()
 
     csv_path = Path(TRAINING_DATA_FILE)
     app.state.writer_task = asyncio.create_task(
@@ -116,6 +141,16 @@ async def startup_event() -> None:
         )
     )
     app.state.mock_task = asyncio.create_task(app.state.mock_engine.run(app.state.stop_event))
+
+    if SERIAL_ENABLED:
+        app.state.serial_task = asyncio.create_task(
+            serial_reader_worker(
+                stop_event=app.state.stop_event,
+                sample_lock=app.state.live_imu_lock,
+            )
+        )
+    else:
+        app.state.serial_task = None
 
     loop = asyncio.get_running_loop()
     transport, _ = await loop.create_datagram_endpoint(
@@ -153,6 +188,10 @@ async def shutdown_event() -> None:
 
     with contextlib.suppress(asyncio.CancelledError):
         await app.state.mock_task
+
+    if app.state.serial_task:
+        with contextlib.suppress(asyncio.CancelledError):
+            await app.state.serial_task
 
 
 async def telemetry_writer_worker(
@@ -207,6 +246,70 @@ async def insert_sensor_log(packet: TelemetryPacket) -> None:
         await session.commit()
 
 
+def _parse_serial_imu_line(line: str) -> LiveImuSample | None:
+    if not line:
+        return None
+
+    if line.startswith("READY:") or line.startswith("ERR:"):
+        return None
+
+    if line.startswith("ESTOP:"):
+        return None
+
+    parts = [part.strip() for part in line.split(",")]
+    if len(parts) < 6:
+        return None
+
+    try:
+        accel_x, accel_y, accel_z, gyro_x, gyro_y, gyro_z = (float(part) for part in parts[:6])
+    except ValueError:
+        return None
+
+    host_time_iso = datetime.now(timezone.utc).isoformat()
+    host_time_monotonic = asyncio.get_running_loop().time()
+    device_time_iso = None
+    return LiveImuSample(
+        accel_x=accel_x,
+        accel_y=accel_y,
+        accel_z=accel_z,
+        gyro_x=gyro_x,
+        gyro_y=gyro_y,
+        gyro_z=gyro_z,
+        host_time_iso=host_time_iso,
+        device_time_iso=device_time_iso,
+        host_time_monotonic=host_time_monotonic,
+    )
+
+
+async def serial_reader_worker(
+    stop_event: asyncio.Event,
+    sample_lock: asyncio.Lock,
+) -> None:
+    loop = asyncio.get_running_loop()
+
+    while not stop_event.is_set():
+        try:
+            with serial.Serial(
+                port=SERIAL_PORT,
+                baudrate=SERIAL_BAUD,
+                timeout=SERIAL_READ_TIMEOUT_S,
+            ) as ser:
+                while not stop_event.is_set():
+                    raw = await loop.run_in_executor(None, ser.readline)
+                    if not raw:
+                        continue
+
+                    line = raw.decode("utf-8", errors="replace").strip()
+                    sample = _parse_serial_imu_line(line)
+                    if sample is None:
+                        continue
+
+                    async with sample_lock:
+                        app.state.live_imu_sample = sample
+        except serial.SerialException:
+            await asyncio.sleep(SERIAL_RECONNECT_WAIT_S)
+
+
 @app.get("/dashboard_data")
 async def get_dashboard_data() -> dict[str, Any]:
     start_ts = asyncio.get_running_loop().time()
@@ -230,6 +333,7 @@ async def get_dashboard_data() -> dict[str, Any]:
 
     return {
         "mode": "live",
+        "schema_version": HYBRID_SCHEMA_VERSION,
         "latency_ms": round(elapsed_ms, 3),
         "cloud_status": cloud_status,
         "local_mesh_status": local_mesh_status,
@@ -263,6 +367,60 @@ async def get_dashboard_data() -> dict[str, Any]:
     }
 
 
+@app.get("/hybrid/dashboard_data")
+async def get_hybrid_dashboard_data() -> dict[str, Any]:
+    start_ts = asyncio.get_running_loop().time()
+    payload = await app.state.mock_engine.snapshot()
+    elapsed_ms = (asyncio.get_running_loop().time() - start_ts) * 1000.0
+
+    payload["mode"] = "hybrid"
+    payload["latency_ms"] = round(elapsed_ms, 3)
+
+    nodes = payload.get("schematic", {}).get("nodes", [])
+    target_node = None
+    for node in nodes:
+        if node.get("id") == SERIAL_NODE_ID:
+            target_node = node
+            break
+
+    if target_node is not None:
+        target_node["source"] = "live"
+        async with app.state.live_imu_lock:
+            sample = app.state.live_imu_sample
+
+        now_monotonic = asyncio.get_running_loop().time()
+        is_stale = True
+        if sample is not None:
+            is_stale = (now_monotonic - sample.host_time_monotonic) > SERIAL_STALE_TIMEOUT_S
+
+        if sample is None or is_stale:
+            target_node["raw_imu"] = None
+            target_node["host_time"] = None
+            target_node["device_time"] = None
+            target_node["status"] = "Disconnected"
+        else:
+            target_node["raw_imu"] = {
+                "ax": sample.accel_x,
+                "ay": sample.accel_y,
+                "az": sample.accel_z,
+                "gx": sample.gyro_x,
+                "gy": sample.gyro_y,
+                "gz": sample.gyro_z,
+            }
+            target_node["host_time"] = sample.host_time_iso
+            target_node["device_time"] = sample.device_time_iso
+
+            accel_mag = math.sqrt(
+                sample.accel_x**2 + sample.accel_y**2 + sample.accel_z**2
+            )
+            gyro_mag = math.sqrt(
+                sample.gyro_x**2 + sample.gyro_y**2 + sample.gyro_z**2
+            )
+            target_node["status"] = "Busy" if accel_mag > 0.3 or gyro_mag > 15.0 else "Idle"
+
+    return payload
+
+
 @app.get("/mock/dashboard_data")
 async def get_mock_dashboard_data() -> dict[str, Any]:
     start_ts = asyncio.get_running_loop().time()
@@ -270,3 +428,9 @@ async def get_mock_dashboard_data() -> dict[str, Any]:
     elapsed_ms = (asyncio.get_running_loop().time() - start_ts) * 1000.0
     payload["latency_ms"] = round(elapsed_ms, 3)
     return payload
+
+
+@app.post("/mock/reset")
+async def reset_mock_engine() -> dict[str, Any]:
+    app.state.mock_engine.reset()
+    return {"status": "ok", "message": "mock engine reset"}

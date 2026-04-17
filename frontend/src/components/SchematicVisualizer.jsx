@@ -9,13 +9,13 @@ const SCALE = 8;
 const typeStyles = {
   robot: "bg-red-500/90 border-2 border-dashed border-red-950 text-white rounded-full flex flex-col items-center justify-center font-bold shadow-[0_0_15px_rgba(239,68,68,0.4)]",
   conveyor: "bg-[#b48600] border-2 border-[#5a4300] text-[#4d3900] font-bold flex items-center justify-center shadow-md",
-  machine: "bg-blue-500/90 border-2 border-blue-900 text-white rounded-xl flex flex-col items-center justify-center font-bold shadow-[0_0_15px_rgba(59,130,246,0.3)]",
+  machine: "bg-[#1e3a8a] border-2 border-[#0b1b44] text-white rounded-xl flex flex-col items-center justify-center font-bold shadow-[0_0_15px_rgba(30,58,138,0.35)]",
   station: "bg-orange-500/90 border-2 border-orange-900 text-white rounded-xl flex flex-col items-center justify-center font-bold shadow-[0_0_15px_rgba(249,115,22,0.3)]",
   inventory: "bg-[#a3d9a5] border-2 border-[#1d4f20] text-[#1d4f20] rounded-xl flex items-center justify-center font-bold shadow-md",
   output: "bg-[#a3d9a5] border-2 border-[#1d4f20] text-[#1d4f20] rounded-xl flex items-center justify-center font-bold shadow-md"
 };
 
-const SchematicVisualizer = ({ schematic }) => {
+const SchematicVisualizer = ({ schematic, selectedRoute, selectedStepIndex }) => {
   const nodes = schematic?.nodes?.length ? schematic.nodes : fallbackNodes;
   const connectors = schematic?.connectors?.length ? schematic.connectors : fallbackConnectors;
 
@@ -43,6 +43,27 @@ const SchematicVisualizer = ({ schematic }) => {
       })
       .filter(Boolean);
   }, [connectors, nodeMap]);
+
+  const pathEdges = useMemo(() => {
+    if (!selectedRoute || selectedRoute.length < 2) {
+      return new Set();
+    }
+    const startIndex = typeof selectedStepIndex === "number" ? selectedStepIndex : 0;
+    const remaining = selectedRoute.slice(Math.max(0, startIndex));
+    const edges = new Set();
+    for (let i = 0; i < remaining.length - 1; i += 1) {
+      edges.add(`${remaining[i]}|${remaining[i + 1]}`);
+    }
+    return edges;
+  }, [selectedRoute, selectedStepIndex]);
+
+  const pathNodes = useMemo(() => {
+    if (!selectedRoute || selectedRoute.length === 0) {
+      return new Set();
+    }
+    const startIndex = typeof selectedStepIndex === "number" ? selectedStepIndex : 0;
+    return new Set(selectedRoute.slice(Math.max(0, startIndex)));
+  }, [selectedRoute, selectedStepIndex]);
 
   return (
     <section className="rounded-xl glass-panel p-5">
@@ -72,14 +93,14 @@ const SchematicVisualizer = ({ schematic }) => {
                         y1={`${edge.y1}%`}
                         x2={`${edge.x2}%`}
                         y2={`${edge.y2}%`}
-                        className="stroke-slate-500"
-                        strokeWidth="2"
+                      className={pathEdges.has(`${edge.from}|${edge.to}`) ? "stroke-blue-200" : "stroke-slate-500"}
+                      strokeWidth={pathEdges.has(`${edge.from}|${edge.to}`) ? "3" : "2"}
                         strokeDasharray="4 4"
                     />
                     {edge.active && (
                         <circle r="6" className="fill-blue-300 drop-shadow-[0_0_8px_rgba(147,197,253,0.9)]">
-                            <animate attributeName="cx" values={`${edge.x1}%;${edge.x2}%`} dur="1.2s" repeatCount="indefinite" />
-                            <animate attributeName="cy" values={`${edge.y1}%;${edge.y2}%`} dur="1.2s" repeatCount="indefinite" />
+                        <animate attributeName="cx" values={`${edge.x1}%;${edge.x2}%`} dur="3.6s" repeatCount="indefinite" />
+                        <animate attributeName="cy" values={`${edge.y1}%;${edge.y2}%`} dur="3.6s" repeatCount="indefinite" />
                         </circle>
                     )}
                 </React.Fragment>
@@ -91,9 +112,12 @@ const SchematicVisualizer = ({ schematic }) => {
                 const widthPx = (node.w || 10) * SCALE;
                 const heightPx = (node.h || 10) * SCALE;
                 const baseClass = typeStyles[node.type] || typeStyles.machine;
+                const isPathNode = pathNodes.has(node.id);
                 
                 // Dim nodes that are offline or error
-                const opacityAttr = (node.status === "Offline" || node.status === "Blocked") ? "opacity-50 grayscale" : "opacity-100";
+                const opacityAttr = (node.status === "Offline" || node.status === "Blocked" || node.status === "Disconnected")
+                  ? "opacity-50 grayscale"
+                  : "opacity-100";
 
                 return (
                     <div
@@ -108,7 +132,7 @@ const SchematicVisualizer = ({ schematic }) => {
                         }}
                         title={`${node.label} (${node.status})`}
                     >
-                        <div className={`w-full h-full ${baseClass}`}>
+                        <div className={`w-full h-full ${baseClass} ${isPathNode ? "ring-2 ring-blue-200/70" : ""}`}>
                             {/* Counter-rotate label so text remains horizontally legible if conveyor is tilted */}
                             <span 
                                 className="block text-center whitespace-pre-wrap leading-tight text-[11px]" 

@@ -5,6 +5,8 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
+from .config import HYBRID_SCHEMA_VERSION
+
 
 @dataclass(slots=True)
 class MockJob:
@@ -25,6 +27,8 @@ class MockTelemetryEngine:
         self._rng = random.Random(573)
         self._tick = 0
         self._sequence = 1000
+        self._max_jobs = 10
+        self._spawn_probability = 0.30
         self._jobs: list[MockJob] = []
         self._in_transition: dict[str, tuple[str, str]] = {}
         self._inventory_kg = {
@@ -43,6 +47,7 @@ class MockTelemetryEngine:
             "r2": 1, "r3": 1, "r4": 1, "r5": 1, "r6": 1,
             "inv_cncm": 5, "inv_lz": 5, "inv_cncl": 5,
             "cncm": 1, "lz": 2, "cncl": 1,
+            "inv_qia": 1, "inv_qib": 1,
             "qia": 1, "qib": 1,
             "inv_oba": 5, "inv_obb": 5, "inv_tra": 5,
             "oba": 5, "obb": 5, "tra": 5,
@@ -72,11 +77,14 @@ class MockTelemetryEngine:
             "c7": {"label": "C7", "type": "conveyor", "x": 56, "y": 41, "w": 18, "h": 4, "rot": 60},
             "r5": {"label": "R5", "type": "robot", "x": 64, "y": 28, "w": 8, "h": 8, "rot": 0},
             "r6": {"label": "R6", "type": "robot", "x": 64, "y": 55, "w": 8, "h": 8, "rot": 0},
-            "qia": {"label": "Inspection A", "type": "station", "x": 64, "y": 8, "w": 14, "h": 10, "rot": 0},
+            "inv_qia": {"label": "Q-IA", "type": "inventory", "x": 64, "y": 18, "w": 6, "h": 6, "rot": 0},
+            "qia": {"label": "Inspection A", "type": "machine", "x": 64, "y": 8, "w": 14, "h": 10, "rot": 0},
             "c10": {"label": "C10", "type": "conveyor", "x": 75, "y": 60, "w": 12, "h": 4, "rot": 0},
-            "qib": {"label": "Inspection B", "type": "station", "x": 63, "y": 75, "w": 14, "h": 10, "rot": 0},
+            "inv_qib": {"label": "Q-IB", "type": "inventory", "x": 64, "y": 65, "w": 6, "h": 6, "rot": 0},
+            "qib": {"label": "Inspection B", "type": "machine", "x": 64, "y": 75, "w": 14, "h": 10, "rot": 0},
             "c8": {"label": "C8", "type": "conveyor", "x": 75, "y": 22, "w": 12, "h": 4, "rot": 0},
             "c9": {"label": "C9", "type": "conveyor", "x": 75, "y": 42, "w": 12, "h": 4, "rot": 0},
+            "inv_oba": {"label": "Q-OBA", "type": "inventory", "x": 84, "y": 22, "w": 6, "h": 6, "rot": 0},
             "oba": {"label": "Output A", "type": "output", "x": 92, "y": 22, "w": 12, "h": 12, "rot": 0},
             "inv_obb": {"label": "Q-OBB", "type": "inventory", "x": 84, "y": 60, "w": 6, "h": 6, "rot": 0},
             "obb": {"label": "Output B", "type": "output", "x": 92, "y": 60, "w": 12, "h": 12, "rot": 0},
@@ -91,7 +99,7 @@ class MockTelemetryEngine:
             ("c1", "r3"), ("r3", "inv_lz"), ("inv_lz", "lz"), ("r3", "c2"), ("r3", "c3"), ("r3", "c5"),
             ("c4", "r4"), ("r4", "inv_cncl"), ("inv_cncl", "cncl"), ("r4", "c3"), ("r4", "c6"), ("r4", "c7"),
             ("c6", "r5"), ("c5", "r6"), ("c7", "r6"),
-            ("r5", "qia"), ("r6", "c10"), ("r6", "qib"),
+            ("r5", "inv_qia"), ("inv_qia", "qia"), ("r6", "c10"), ("r6", "inv_qib"), ("inv_qib", "qib"),
             ("r5", "c8"), ("r5", "c9"), ("r6", "c9"),
             ("c8", "inv_oba"), ("inv_oba", "oba"),
             ("c10", "inv_obb"), ("inv_obb", "obb"),
@@ -114,6 +122,7 @@ class MockTelemetryEngine:
             nodes = self._build_nodes()
             connectors = self._build_connectors()
             return {
+                "schema_version": HYBRID_SCHEMA_VERSION,
                 "mode": "mock",
                 "cloud_status": True,
                 "local_mesh_status": True,
@@ -146,9 +155,9 @@ class MockTelemetryEngine:
             self._status_overrides["qia"] = "Offline"
 
     def _spawn_jobs(self) -> None:
-        if len(self._jobs) >= 15:
+        if len(self._jobs) >= self._max_jobs:
             return
-        if self._rng.random() > 0.45:
+        if self._rng.random() > self._spawn_probability:
             return
 
         self._sequence += 1
@@ -157,11 +166,11 @@ class MockTelemetryEngine:
         if family == "gasket":
             route = ["ir", "r1", "c1", "r3", "inv_lz", "lz", "r3", "c5", "r6", "c10", "inv_obb", "obb"]
         elif family == "shaft":
-            route = ["ir", "r0", "c0", "r2", "c4", "r4", "inv_cncl", "cncl", "r4", "c6", "r5", "qia", "r5", "c8", "inv_oba", "oba"]
+            route = ["ir", "r0", "c0", "r2", "c4", "r4", "inv_cncl", "cncl", "r4", "c6", "r5", "inv_qia", "qia", "r5", "c8", "inv_oba", "oba"]
         elif family == "housing":
             route = ["ir", "r0", "c0", "r2", "inv_cncm", "cncm", "r2", "c2", "r3", "c5", "r6", "c9", "inv_tra", "tra"]
         else:
-            route = ["ir", "r1", "c1", "r3", "inv_lz", "lz", "r3", "c3", "r4", "inv_cncl", "cncl", "r4", "c7", "r6", "qib"]
+            route = ["ir", "r1", "c1", "r3", "inv_lz", "lz", "r3", "c3", "r4", "inv_cncl", "cncl", "r4", "c7", "r6", "inv_qib", "qib"]
 
         total_time = sum(self._duration_for_node(n) for n in route)
         due_date = datetime.now(timezone.utc) + timedelta(hours=self._rng.randint(8, 36))
@@ -249,7 +258,8 @@ class MockTelemetryEngine:
             "cncm": 4.8, "lz": 2.6,
             "c0": 0.5, "c1": 0.5, "c2": 0.5, "c3": 0.5, "c4": 0.5, "c5": 0.5, "c6": 0.5, "c7": 0.5, "c8": 0.5, "c9": 0.5, "c10": 0.5,
             "r2": 1.0, "r3": 1.0, "r4": 1.0, "r5": 1.0, "r6": 1.0,
-            "qia": 2.0, "qib": 2.0,
+            "inv_qia": 0.2, "inv_qib": 0.2,
+            "qia": 3.0, "qib": 3.0,
             "inv_oba": 0.2, "inv_obb": 0.2, "inv_tra": 0.2,
             "oba": 1.0, "obb": 1.0, "tra": 1.0,
         }
@@ -264,6 +274,10 @@ class MockTelemetryEngine:
         self._inventory_kg["PLA-3"] = max(0.0, self._inventory_kg["PLA-3"] - 0.002 * active_cutting)
         self._inventory_kg["AL-6061"] = max(0.0, self._inventory_kg["AL-6061"] - 0.0015 * active_cutting)
         self._inventory_kg["STEEL-17"] = max(0.0, self._inventory_kg["STEEL-17"] - 0.001 * active_cutting)
+
+    def reset(self) -> None:
+        self._jobs.clear()
+        self._in_transition.clear()
 
     def _node_status_map(self) -> dict[str, str]:
         status_map = {node_id: "Idle" for node_id in self._node_definitions}
@@ -299,6 +313,7 @@ class MockTelemetryEngine:
                     "id": node_id,
                     "label": node_meta["label"],
                     "type": node_meta["type"],
+                    "source": "mock",
                     "status": status_map[node_id],
                     "active_jobs": active_jobs,
                     "queue_depth": self._queue_depth_at_node(node_id),
@@ -334,6 +349,7 @@ class MockTelemetryEngine:
         rows = []
         for job in self._jobs[:15]:
             current_node = job.route[job.step_index]
+            next_node = job.route[job.step_index + 1] if job.step_index + 1 < len(job.route) else None
             meta = "SPT Sorted" if job.total_processing_time < 5.0 else ""
             rows.append(
                 {
@@ -341,6 +357,10 @@ class MockTelemetryEngine:
                     "requesting_unit": job.requesting_unit,
                     "due_date": job.due_date_iso,
                     "status": f"{job.part_family}:{current_node}:{job.status} {meta}",
+                    "route": list(job.route),
+                    "step_index": job.step_index,
+                    "current_node": current_node,
+                    "next_node": next_node,
                 }
             )
         return rows
