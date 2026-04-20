@@ -1,0 +1,8 @@
+(.venv) PS C:\Users\lukep\Documents\MVS> python -m unittest backend.tests.test_mock_scenarios -v
+test_jobs_spawn_and_work_orders (backend.tests.test_mock_scenarios.TestMockScenarios.test_jobs_spawn_and_work_orders) ... ok
+test_transitions_mark_connectors (backend.tests.test_mock_scenarios.TestMockScenarios.test_transitions_mark_connectors) ... ok
+
+----------------------------------------------------------------------
+Ran 2 tests in 0.002s
+
+OK

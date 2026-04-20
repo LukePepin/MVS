@@ -86,3 +86,12 @@ Implement and validate **Live Mode** where physical 6-axis robot telemetry strea
 - Confirm final node alignment for Q-IA/Q-IB and inspection column.
 - Capture evidence artifacts (screenshots, payload snapshots, logs) for Week 3 exit criteria.
 - Run full test checklist and record results in Week 3 notes.
+
+## Week 4 Handoff (Documentation-First)
+
+The following open items are explicitly carried into Week 4 validation planning:
+
+1. Finalize evidence capture for hybrid payload and frontend behavior under R6 live mapping.
+2. Complete checklist-driven execution of existing scripts/tests and archive outcomes.
+3. Consolidate anomaly-candidate evidence and reporting notes into Week 4 closure artifacts.
+4. Ensure README runbook and weekly plan chain reflect actual execution order and acceptance criteria.

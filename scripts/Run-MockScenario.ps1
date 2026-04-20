@@ -17,6 +17,8 @@ if (!(Test-Path $outDir)) {
 $outFile = Join-Path $outDir "mock_scenario_$stamp.txt"
 
 Write-Host "Running mock scenario tests..."
-python -m unittest backend.tests.test_mock_scenarios -v | Tee-Object -FilePath $outFile
+# unittest writes verbose results to stderr in some environments, so merge streams
+# to ensure Tee-Object always persists the same output shown in terminal.
+python -m unittest backend.tests.test_mock_scenarios -v *>&1 | Tee-Object -FilePath $outFile
 
 Write-Host "Saved output to $outFile"

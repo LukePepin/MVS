@@ -287,3 +287,14 @@ builds/
 backend/ml/anomaly_detection/results/week2/window_sweep_results/window_configs/
 backend/ml/anomaly_detection/results/week2/window_sweep_results/**/model_runs/
 backend/ml/anomaly_detection/results/week2/window_runs/
+
+# Week 4 documentation staging (requested local-only folders)
+docs/archive/
+docs/assignments/
+docs/assignements/
+
+# Week 4 local evidence captures (timestamped scratch outputs)
+artifacts/week4/payloads/test_hybrid_*.txt
+artifacts/week4/payloads/hybrid_payload_*.json
+artifacts/week4/notes/ml_ranked_summary_*.txt
+backend/ml/anomaly_detection/results/week2/window_sweep_results/summaries/best_setting_*.json

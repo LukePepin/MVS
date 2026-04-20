@@ -71,6 +71,54 @@ The workflow prefers `GHCR_TOKEN` when available and falls back to `GITHUB_TOKEN
 
 - `Hybrid Testbed Mode` (primary and singular mode): frontend polls `/mock/dashboard_data`, where simulated node behavior is preserved while one robot node is designated to consume real robot telemetry as integration work progresses.
 
+## Week 4 Validation Quickstart (Documentation-First Pass)
+
+Week 4 is currently scoped as a validation-definition and evidence-planning sprint before additional engineering implementation.
+
+### Recommended run order
+
+1. Backend mock scenario baseline:
+
+```powershell
+./scripts/Run-MockScenario.ps1
+```
+
+2. Safety path regression:
+
+```powershell
+python -m unittest backend.tests.test_estop_pipeline -v
+```
+
+3. Mock engine transition regression:
+
+```powershell
+python -m unittest backend.tests.test_mock_scenarios -v
+```
+
+4. Hybrid payload smoke check (R6 mapping):
+
+```powershell
+./scripts/Test-Hybrid.ps1
+```
+
+### Expected outputs
+
+- Mock scenario run writes timestamped output under `artifacts/`.
+- Backend test commands print unittest pass/fail summaries.
+- Hybrid script prints schema/mode and R6 source/status/timestamps.
+
+### Evidence expectations
+
+For each validation run, capture:
+
+- command used,
+- execution timestamp,
+- pass/fail result,
+- key output excerpt,
+- artifact path.
+
+Detailed acceptance criteria and artifact requirements are defined in `docs/weekly/Week4.md`.
+
 ## Testbed Implementation Status
 
 - Completed: Assumed EARC triangular branch/merge topology
@@ -78,6 +126,33 @@ The workflow prefers `GHCR_TOKEN` when available and falls back to `GITHUB_TOKEN
 - Completed: Frontend schematic rendering aligned to backend node coordinates and connectors
 - Completed: Testbed architecture documentation in `docs/design/testbed.md`
 - Completed: Validation checks (backend and frontend editor diagnostics clean)
+
+## Project Learning Path (Recommended)
+
+Read these in order to understand architecture intent, implementation state, and Week 4 validation goals:
+
+1. `docs/design/Official_Project_Proposal.md`
+2. `docs/design/architecturepivot.md`
+3. `docs/design/testbed.md`
+4. `docs/weekly/Week1.md`
+5. `docs/weekly/Week2.md`
+6. `docs/weekly/Week3.md`
+7. `docs/weekly/Week4.md`
+8. `docs/ISE572_ML_Proposal_Readme.md`
+
+## Week 4 Scope Boundary
+
+Current pass intent:
+
+- define and harden validation criteria,
+- define evidence capture standards,
+- align documentation for closure readiness.
+
+Deferred to later pass:
+
+- new on-device model deployment features,
+- new inference pipeline engineering,
+- feature expansion beyond closure validation.
 
 ## Mock Model Notes
 

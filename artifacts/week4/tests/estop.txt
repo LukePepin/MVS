@@ -1,0 +1,20 @@
+(.venv) PS C:\Users\lukep\Documents\MVS> python -m unittest backend.tests.test_estop_pipeline -v
+test_data_collection_stops_on_estop_flag (backend.tests.test_estop_pipeline.TestEStopPipeline.test_data_collection_stops_on_estop_flag) ... Software E-STOP flag detected! Closing out robot actions.
+[1/1] Moving to Home
+[1/1] Moving to 1v1
+test_datalogger_estop_flag_creation (backend.tests.test_estop_pipeline.TestEStopPipeline.test_datalogger_estop_flag_creation) ... Opening COM_DUMMY at 115200 baud...
+Connected. Logging IMU stream...
+Expected format: ax,ay,az,gx,gy,gz
+
+[!] E-STOP received from Arduino: ESTOP:COLLISION
+Datalogger complete.
+Rows written: 8
+Invalid lines skipped: 0
+Elapsed: 2.20s, approx rate: 3.64 rows/s
+Output: C:\Users\lukep\Documents\MVS\backend\tests\dummy_out.csv
+ok
+
+----------------------------------------------------------------------
+Ran 2 tests in 0.007s
+
+OK
