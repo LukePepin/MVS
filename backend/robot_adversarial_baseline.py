@@ -20,6 +20,7 @@ import argparse
 import random
 import sys
 import time
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -155,12 +156,17 @@ def run_loop(
     base_sleep_s: float,
     max_cycles: int,
     improper_rate: float,
+    duration_seconds: float,
 ) -> None:
     prev_pose = HOME_POSE_NAME
     cycle = 0
+    prev_mode = "UNKNOWN"
+    started_at = time.time()
 
     while True:
         if max_cycles > 0 and cycle >= max_cycles:
+            break
+        if duration_seconds > 0 and (time.time() - started_at) >= duration_seconds:
             break
         if Path(__file__).parent.joinpath("estop.flag").exists():
             print("Software E-STOP flag detected. Exiting movement loop.")
@@ -201,8 +207,14 @@ def run_loop(
         if not dry_run:
             move_to_pose_name(robot, target_pose)
 
+        mode = "ANOMALY" if event != "normal" else "NORMAL"
+        ts = datetime.now(timezone.utc).isoformat()
+        if mode != prev_mode:
+            print(f"MODE_CHANGE ts_utc={ts} mode={mode}")
+            prev_mode = mode
+
         print(
-            f"cycle={cycle} from={prev_pose} to={target_pose} "
+            f"ts_utc={ts} cycle={cycle} mode={mode} from={prev_pose} to={target_pose} "
             f"event={event} dwell={dwell:.2f}s stop={stop_hold_s:.2f}s"
         )
 
@@ -220,6 +232,12 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--seed", type=int, default=None, help="Optional RNG seed")
     parser.add_argument("--sleep", type=float, default=1.0, help="Base dwell time between moves")
     parser.add_argument("--max-cycles", type=int, default=0, help="0 means infinite")
+    parser.add_argument(
+        "--duration-seconds",
+        type=float,
+        default=0.0,
+        help="Stop after this many seconds (0 means disabled)",
+    )
     parser.add_argument(
         "--improper-rate",
         type=float,
@@ -306,6 +324,7 @@ def main() -> None:
             base_sleep_s=args.sleep,
             max_cycles=args.max_cycles,
             improper_rate=args.improper_rate,
+            duration_seconds=args.duration_seconds,
         )
     finally:
         if not args.dry_run:

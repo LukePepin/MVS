@@ -20,7 +20,8 @@ uvicorn backend.app.main:app --host 0.0.0.0 --port 8000
 - Writes telemetry to CSV and SQLite for downstream analysis
 - Persists telemetry to SQLite via SQLAlchemy async + `aiosqlite`
 - Serves `/dashboard_data` as a single async JSON payload
-- Serves `/mock/dashboard_data` as the primary hybrid testbed feed
+- Serves `/hybrid/dashboard_data` for hybrid mode (default UI mode)
+- Serves `/mock/dashboard_data` for fully simulated mode
 
 ## Frontend (React + Tailwind utility classes)
 
@@ -30,7 +31,8 @@ npm install
 npm run dev -- --host 0.0.0.0 --port 5173
 ```
 
-Dashboard component polls `http://localhost:8000/dashboard_data` every 1000ms.
+Dashboard polls `http://localhost:8000/hybrid/dashboard_data` every 1000ms by default,
+with a mode toggle to `http://localhost:8000/mock/dashboard_data`.
 
 ## Arduino Nano 6-Axis CSV Capture
 
@@ -69,11 +71,11 @@ The workflow prefers `GHCR_TOKEN` when available and falls back to `GITHUB_TOKEN
 
 ## Telemetry Mode (Primary)
 
-- `Hybrid Testbed Mode` (primary and singular mode): frontend polls `/mock/dashboard_data`, where simulated node behavior is preserved while one robot node is designated to consume real robot telemetry as integration work progresses.
+- `Hybrid Testbed Mode` (primary mode): frontend polls `/hybrid/dashboard_data`, where simulated node behavior is preserved while one robot node is designated to consume real robot telemetry as integration work progresses.
 
-## Week 4 Validation Quickstart (Documentation-First Pass)
+## Week 4 Validation + TinyML Quickstart
 
-Week 4 is currently scoped as a validation-definition and evidence-planning sprint before additional engineering implementation.
+Week 4 now includes both validation evidence capture and true on-device TinyML inference on Nano 33 BLE.
 
 ### Recommended run order
 
@@ -101,11 +103,31 @@ python -m unittest backend.tests.test_mock_scenarios -v
 ./scripts/Test-Hybrid.ps1
 ```
 
+5. Build TinyML bundle for Arduino inference sketch:
+
+```powershell
+python backend/ml/anomaly_detection/scripts/generate_tinyml_arduino_bundle.py --model-tflite backend/ml/anomaly_detection/results/tinyml_raw32_week2/export/model_fp32.tflite --scaling-json backend/ml/anomaly_detection/results/tinyml_raw32_week2/model/scaling.json --threshold-json backend/ml/anomaly_detection/results/tinyml_raw32_week2/model/threshold.json --out-sketch-dir backend/arduino_nano_tinyml_inference --window-size 32 --axis-count 6
+```
+
+6. Upload TinyML inference sketch:
+
+```powershell
+./scripts/Upload-TinyML-ToArduino.ps1 -Port COM9 -SketchPath backend/arduino_nano_tinyml_inference
+```
+
+7. Run continuous baseline with explicit anomaly injections:
+
+```powershell
+./scripts/Run-Baseline-Sharp-Loop.ps1 -RobotIp 192.168.0.223 -TargetAnomalyInterval 30 -BaselineSleep 1.0 -InjectionDurationSeconds 5.0 -InjectionSpeedup 4.0 -StatusEvery 5
+```
+
 ### Expected outputs
 
 - Mock scenario run writes timestamped output under `artifacts/`.
 - Backend test commands print unittest pass/fail summaries.
 - Hybrid script prints schema/mode and R6 source/status/timestamps.
+- TinyML sketch prints `READY:TINYML_INFERENCE`, `WARMING_UP`, and `ML_SCORE=<value> THRESH=<value> STATUS=NORMAL|ANOMALY_DETECTED`.
+- Motion script prints explicit anomaly markers: `INJECTION STARTED`, `INJECTION BURST`, `INJECTION STOPPED`.
 
 ### Evidence expectations
 
@@ -118,6 +140,26 @@ For each validation run, capture:
 - artifact path.
 
 Detailed acceptance criteria and artifact requirements are defined in `docs/weekly/Week4.md`.
+
+### Week 4 structure (canonical locations)
+
+- Planning and weekly summary: `docs/weekly/Week4.md`
+- Operational command reference: `docs/weekly/week4/TerminalB_Commands.md`
+- Evidence template in use: `artifacts/week4/_Week4_Evidence_Template.md`
+- Collected logs and notes: `artifacts/week4/tests/`, `artifacts/week4/notes/`, `artifacts/week4/payloads/`
+
+Naming convention used in this repo:
+
+- Weekly summaries use `WeekN.md` files under `docs/weekly/`
+- Week-specific support material uses `weekN/` folders under `docs/weekly/`
+
+### Repository closeout checklist
+
+- `README.md`, `docs/weekly/Week3.md`, and `docs/weekly/Week4.md` are status-aligned.
+- Week 4 command and evidence-template docs each have a single canonical location.
+- `docs/assignments/Week10_Assignment_Prompt.md` is the canonical prompt filename.
+- TinyML generated binary outputs are excluded from version control via `.gitignore`.
+- Trackable evidence remains in `artifacts/week4/notes/`, `artifacts/week4/tests/`, and `artifacts/week4/payloads/`.
 
 ## Testbed Implementation Status
 
@@ -142,17 +184,18 @@ Read these in order to understand architecture intent, implementation state, and
 
 ## Week 4 Scope Boundary
 
-Current pass intent:
+Completed in this pass:
 
-- define and harden validation criteria,
-- define evidence capture standards,
-- align documentation for closure readiness.
+- validation criteria and evidence chain hardening,
+- hybrid payload and continuity evidence,
+- TinyML model training/export pipeline for raw 32x6 windows,
+- true on-device inference sketch for Nano 33 BLE,
+- repeatable anomaly-injection motion runner for live demo.
 
-Deferred to later pass:
+Still future scope:
 
-- new on-device model deployment features,
-- new inference pipeline engineering,
-- feature expansion beyond closure validation.
+- additional model architectures and long-horizon tuning,
+- expanded multi-node live telemetry beyond current R6-focused flow.
 
 ## Mock Model Notes
 

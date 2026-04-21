@@ -1,0 +1,3 @@
+﻿phase_start_utc=2026-04-20T16:01:07.9389627Z phase=normal improper_rate=0 duration_s=45
+phase_end_utc=2026-04-20T16:01:54.2607505Z phase=normal
+phase_start_utc=2026-04-20T16:01:54.2617524Z phase=anomaly improper_rate=0.7 duration_s=30

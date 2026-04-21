@@ -1,0 +1,25 @@
+{
+  "input_csv": "backend\\ml\\anomaly_detection\\data\\week2\\week2_labeled_all.csv",
+  "axis_cols": [
+    "Accel_X",
+    "Accel_Y",
+    "Accel_Z",
+    "Gyro_X",
+    "Gyro_Y",
+    "Gyro_Z"
+  ],
+  "window_size": 32,
+  "stride": 8,
+  "feature_dim": 192,
+  "total_rows": 86337,
+  "total_windows": 10789,
+  "splits": {
+    "train": 7551,
+    "val": 1618,
+    "test": 1620
+  },
+  "split_mode": "stratified",
+  "seed": 42,
+  "has_window_labels": true,
+  "window_label_mode": "any"
+}

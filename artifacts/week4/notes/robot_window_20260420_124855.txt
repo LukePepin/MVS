@@ -1,0 +1,5 @@
+﻿robot_start_utc=2026-04-20T16:48:56.9069697Z
+robot_end_utc=2026-04-20T16:50:21.4098897Z
+phase_start_utc=2026-04-20T16:50:31.6547075Z phase=normal improper_rate=0 duration_s=5
+phase_end_utc=2026-04-20T16:50:39.0838863Z phase=normal
+phase_start_utc=2026-04-20T16:50:39.0848852Z phase=anomaly improper_rate=0.7 duration_s=45

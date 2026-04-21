@@ -1,0 +1,3 @@
+﻿run_id=20260420_104459
+csv=.\backend\data\training_data_0002.csv
+note=Using training_data_0002.csv captured in live session; full file not printed.

@@ -1,0 +1,7 @@
+﻿run_id=20260420_104459
+csv=backend/data/training_data_0002.csv
+rows=2092
+missing_columns=
+timestamp_parse_failures=0
+gaps_gt_1s=0
+note=values from terminal continuity report

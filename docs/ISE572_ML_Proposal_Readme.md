@@ -33,9 +33,9 @@ python .\compare_window_runs.py --runs-root ..\results\week2\window_runs
 - Test and validate new runs against the current model with consistent selection criteria.
 - Check stability across seeds and confirm the best setting holds under repeat runs.
 
-## Week 4 note (current pass)
+## Week 4 note (closeout)
 
-Week 4 is currently documentation-first: validation criteria, test matrix definitions, and evidence packaging are being finalized before additional engineering implementation.
+Week 4 validation and TinyML deployment closeout are complete, including evidence packaging and runbook updates.
 
 For Week 4 execution details, see:
 

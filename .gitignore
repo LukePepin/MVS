@@ -288,13 +288,18 @@ backend/ml/anomaly_detection/results/week2/window_sweep_results/window_configs/
 backend/ml/anomaly_detection/results/week2/window_sweep_results/**/model_runs/
 backend/ml/anomaly_detection/results/week2/window_runs/
 
-# Week 4 documentation staging (requested local-only folders)
-docs/archive/
-docs/assignments/
-docs/assignements/
-
 # Week 4 local evidence captures (timestamped scratch outputs)
 artifacts/week4/payloads/test_hybrid_*.txt
 artifacts/week4/payloads/hybrid_payload_*.json
 artifacts/week4/notes/ml_ranked_summary_*.txt
 backend/ml/anomaly_detection/results/week2/window_sweep_results/summaries/best_setting_*.json
+
+# TinyML generated training/export outputs (reproducible, large)
+backend/ml/anomaly_detection/results/tinyml_raw32_week2/dataset.npz
+backend/ml/anomaly_detection/results/tinyml_raw32_week2/export/model_fp32.tflite
+backend/ml/anomaly_detection/results/tinyml_raw32_week2/export/model_int8.tflite
+backend/ml/anomaly_detection/results/tinyml_raw32_week2/export/model_data.h
+backend/ml/anomaly_detection/results/tinyml_raw32_week2/model/tiny_dense_autoencoder.keras
+
+# Local runtime database
+mes.db

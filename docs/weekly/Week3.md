@@ -1,6 +1,6 @@
 # Week 3: Hybrid Mode Integration and Validation
 Date: 2026-04-17
-Status: In Progress
+Status: Complete (Closed via Week 4 validation handoff)
 
 ## Week 3 Objective
 
@@ -81,11 +81,11 @@ Implement and validate **Live Mode** where physical 6-axis robot telemetry strea
 - Added Vitest + frontend tests and backend mock scenario tests.
 - Refined dashboard layout (analytics right, work orders below model) and reduced margins.
 
-## Open Items
+## Closeout Notes
 
-- Confirm final node alignment for Q-IA/Q-IB and inspection column.
-- Capture evidence artifacts (screenshots, payload snapshots, logs) for Week 3 exit criteria.
-- Run full test checklist and record results in Week 3 notes.
+- Week 3 implementation items were validated and evidence capture was completed during Week 4.
+- Hybrid contract and R6 mapping checks are documented in Week 4 artifacts and summary.
+- Any remaining improvements are now treated as post-closeout enhancement scope, not Week 3 blockers.
 
 ## Week 4 Handoff (Documentation-First)
 
