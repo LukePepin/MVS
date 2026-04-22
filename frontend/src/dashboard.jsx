@@ -1,9 +1,14 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import SchematicVisualizer from "./components/SchematicVisualizer";
 import StatusBadge from "./components/StatusBadge";
+import SettingsPanel from "./components/SettingsPanel";
+import AnalyticsTab from "./components/AnalyticsTab";
+import TraceabilityTab from "./components/TraceabilityTab";
 import { useTelemetry } from "./hooks/useTelemetry";
+
 const Dashboard = () => {
   const { mode, setMode, data, error, endpoint } = useTelemetry();
+  const [activeTab, setActiveTab] = useState("overview");
   const r6Node = useMemo(
     () => data?.schematic?.nodes?.find((node) => node.id === "r6"),
     [data]
@@ -23,6 +28,19 @@ const Dashboard = () => {
     }
     return Math.sqrt(r6Imu.gx ** 2 + r6Imu.gy ** 2 + r6Imu.gz ** 2);
   }, [r6Imu]);
+
+  const bottleneckNode = useMemo(() => {
+    if (!data?.schematic?.nodes) return null;
+    let maxQueue = 0;
+    let bNode = null;
+    for (const n of data.schematic.nodes) {
+        if (n.queue_depth > maxQueue) {
+            maxQueue = n.queue_depth;
+            bNode = n.id;
+        }
+    }
+    return bNode;
+  }, [data]);
 
   const colorForValue = (value, maxAbs) => {
     const intensity = Math.min(1, Math.abs(value) / maxAbs);
@@ -85,6 +103,12 @@ const Dashboard = () => {
             </div>
           </div>
 
+          <div className="mt-4 flex gap-6 border-b border-white/10 pb-4">
+            <button onClick={() => setActiveTab("overview")} className={`text-sm font-semibold transition ${activeTab === 'overview' ? 'text-blue-400 border-b-2 border-blue-400 pb-1' : 'text-slate-400 hover:text-white'}`}>Overview</button>
+            <button onClick={() => setActiveTab("analytics")} className={`text-sm font-semibold transition ${activeTab === 'analytics' ? 'text-blue-400 border-b-2 border-blue-400 pb-1' : 'text-slate-400 hover:text-white'}`}>Analytics & Trends</button>
+            <button onClick={() => setActiveTab("traceability")} className={`text-sm font-semibold transition ${activeTab === 'traceability' ? 'text-blue-400 border-b-2 border-blue-400 pb-1' : 'text-slate-400 hover:text-white'}`}>Traceability</button>
+          </div>
+
           <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
             <div className="rounded-lg border border-white/5 bg-black/20 p-4 shadow-inner">
               <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Cloud Status</p>
@@ -119,8 +143,11 @@ const Dashboard = () => {
         </header>
 
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+          
+          {activeTab === "overview" && (
+            <>
           <div className="lg:col-span-9">
-            <SchematicVisualizer schematic={data.schematic} machineStatus={data.machine_status} />
+            <SchematicVisualizer schematic={data.schematic} machineStatus={data.machine_status} bottleneckNode={bottleneckNode} />
 
             <section className="mt-6 rounded-xl glass-panel p-5">
               <h3 className="mb-4 text-base font-semibold text-white">Work Orders</h3>
@@ -191,16 +218,23 @@ const Dashboard = () => {
             </section>
           </div>
 
-          <section className="rounded-xl glass-panel p-5 lg:col-span-3">
-            <h3 className="mb-4 text-base font-semibold text-white">Testbed Analytics</h3>
-            <div className="grid grid-cols-1 gap-3 text-xs text-slate-300">
-              <div className="rounded-lg border border-white/5 bg-black/20 p-3">
-                <div className="text-[10px] uppercase tracking-widest text-slate-500">Jobs Active</div>
-                <div className="mt-1 text-base font-semibold text-white">{data.work_orders.length}</div>
-              </div>
-              <div className="rounded-lg border border-white/5 bg-black/20 p-3">
-                <div className="text-[10px] uppercase tracking-widest text-slate-500">Inventory Lines</div>
-                <div className="mt-1 text-base font-semibold text-white">{data.raw_inventory.length}</div>
+          <section className="rounded-xl p-5 lg:col-span-3 space-y-6">
+            <SettingsPanel />
+
+            <div className="glass-panel p-5 rounded-xl border border-white/10 shadow-lg">
+              <h3 className="mb-4 text-base font-semibold text-white">Testbed Analytics</h3>
+              <div className="grid grid-cols-1 gap-3 text-xs text-slate-300">
+                <div className="rounded-lg border border-white/5 bg-black/20 p-3">
+                  <div className="text-[10px] uppercase tracking-widest text-slate-500">Jobs Active</div>
+                  <div className="mt-1 text-base font-semibold text-white">{data.work_orders.length}</div>
+                </div>
+                <div className="rounded-lg border border-white/5 bg-black/20 p-3 flex justify-between items-center">
+                  <div>
+                    <div className="text-[10px] uppercase tracking-widest text-slate-500">Bottleneck</div>
+                    <div className="mt-1 text-base font-semibold text-red-400">{bottleneckNode ? bottleneckNode.toUpperCase() : "None"}</div>
+                  </div>
+                  {bottleneckNode && <span className="animate-pulse w-3 h-3 bg-red-500 rounded-full"></span>}
+                </div>
               </div>
             </div>
 
@@ -234,6 +268,21 @@ const Dashboard = () => {
               </div>
             </div>
           </section>
+          </>
+          )}
+
+          {activeTab === "analytics" && (
+            <div className="lg:col-span-12">
+                <AnalyticsTab workOrders={data.work_orders} machineStatus={data.machine_status} telemetryStats={data.telemetry_stats} />
+            </div>
+          )}
+
+          {activeTab === "traceability" && (
+            <div className="lg:col-span-12">
+                <TraceabilityTab />
+            </div>
+          )}
+
         </div>
       </div>
     </div>

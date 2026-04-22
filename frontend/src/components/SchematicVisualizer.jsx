@@ -15,7 +15,7 @@ const typeStyles = {
   output: "bg-[#a3d9a5] border-2 border-[#1d4f20] text-[#1d4f20] rounded-xl flex items-center justify-center font-bold shadow-md"
 };
 
-const SchematicVisualizer = ({ schematic, selectedRoute, selectedStepIndex }) => {
+const SchematicVisualizer = ({ schematic, machineStatus, selectedRoute, selectedStepIndex, bottleneckNode }) => {
   const nodes = schematic?.nodes?.length ? schematic.nodes : fallbackNodes;
   const connectors = schematic?.connectors?.length ? schematic.connectors : fallbackConnectors;
 
@@ -118,11 +118,14 @@ const SchematicVisualizer = ({ schematic, selectedRoute, selectedStepIndex }) =>
                 const opacityAttr = (node.status === "Offline" || node.status === "Blocked" || node.status === "Disconnected")
                   ? "opacity-50 grayscale"
                   : "opacity-100";
+                  
+                const isBottleneck = bottleneckNode && node.id === bottleneckNode;
+                const bottleneckClass = isBottleneck ? "ring-4 ring-red-500/80 shadow-[0_0_35px_rgba(239,68,68,0.9)] animate-pulse z-40 scale-110" : "";
 
                 return (
                     <div
                         key={node.id}
-                        className={`absolute -translate-x-1/2 -translate-y-1/2 flex items-center justify-center transition-all duration-300 ${opacityAttr}`}
+                        className={`absolute -translate-x-1/2 -translate-y-1/2 flex items-center justify-center transition-all duration-300 ${opacityAttr} ${isBottleneck ? "z-40" : "z-10"}`}
                         style={{ 
                             left: `${node.x}%`, 
                             top: `${node.y}%`, 
@@ -132,7 +135,7 @@ const SchematicVisualizer = ({ schematic, selectedRoute, selectedStepIndex }) =>
                         }}
                         title={`${node.label} (${node.status})`}
                     >
-                        <div className={`w-full h-full ${baseClass} ${isPathNode ? "ring-2 ring-blue-200/70" : ""}`}>
+                        <div className={`w-full h-full ${baseClass} ${bottleneckClass} ${isPathNode ? "ring-2 ring-blue-200/70" : ""}`}>
                             {/* Counter-rotate label so text remains horizontally legible if conveyor is tilted */}
                             <span 
                                 className="block text-center whitespace-pre-wrap leading-tight text-[11px]" 

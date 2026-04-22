@@ -11,6 +11,7 @@ import aiofiles
 import serial
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 from sqlalchemy import insert, select
 
 from .config import (
@@ -102,6 +103,16 @@ class TelemetryDatagramProtocol(asyncio.DatagramProtocol):
             self.stats["last_udp_ts"] = asyncio.get_running_loop().time()
         except asyncio.QueueFull:
             self.stats["dropped_packets"] += 1
+
+
+class DILSettingsRequest(BaseModel):
+    r6_offline: bool
+    packet_loss: float = 0.0
+    latency: float = 0.0
+    jitter: float = 0.0
+
+class RoutingSettingsRequest(BaseModel):
+    algorithm: str
 
 
 app = FastAPI(title="MVS (Minimum Viable Spring)", version="0.1.0")
@@ -310,18 +321,46 @@ async def serial_reader_worker(
             await asyncio.sleep(SERIAL_RECONNECT_WAIT_S)
 
 
-@app.get("/dashboard_data")
-async def get_dashboard_data() -> dict[str, Any]:
-    start_ts = asyncio.get_running_loop().time()
-
+async def _fetch_db_dashboard_state():
     async with AsyncSessionLocal() as session:
         machine_status_result = await session.execute(select(MachineStatus))
         raw_inventory_result = await session.execute(select(RawInventory))
         work_orders_result = await session.execute(select(WorkOrders))
 
-        machine_status_rows = machine_status_result.scalars().all()
-        raw_inventory_rows = raw_inventory_result.scalars().all()
-        work_order_rows = work_orders_result.scalars().all()
+        return (
+            [
+                {
+                    "machine_id": row.machine_id,
+                    "current_state": row.current_state,
+                    "job_in_progress": row.job_in_progress,
+                    "est_completion": row.est_completion.isoformat() if row.est_completion else None,
+                }
+                for row in machine_status_result.scalars().all()
+            ],
+            [
+                {
+                    "material_id": row.material_id,
+                    "current_weight_kg": row.current_weight_kg,
+                    "last_updated": row.last_updated.isoformat(),
+                }
+                for row in raw_inventory_result.scalars().all()
+            ],
+            [
+                {
+                    "order_id": row.order_id,
+                    "requesting_unit": row.requesting_unit,
+                    "due_date": row.due_date.isoformat(),
+                    "status": row.status,
+                }
+                for row in work_orders_result.scalars().all()
+            ],
+        )
+
+@app.get("/dashboard_data")
+async def get_dashboard_data() -> dict[str, Any]:
+    start_ts = asyncio.get_running_loop().time()
+
+    mac, inv, wo = await _fetch_db_dashboard_state()
 
     elapsed_ms = (asyncio.get_running_loop().time() - start_ts) * 1000.0
 
@@ -338,32 +377,9 @@ async def get_dashboard_data() -> dict[str, Any]:
         "cloud_status": cloud_status,
         "local_mesh_status": local_mesh_status,
         "telemetry_stats": app.state.telemetry_stats,
-        "machine_status": [
-            {
-                "machine_id": row.machine_id,
-                "current_state": row.current_state,
-                "job_in_progress": row.job_in_progress,
-                "est_completion": row.est_completion.isoformat() if row.est_completion else None,
-            }
-            for row in machine_status_rows
-        ],
-        "raw_inventory": [
-            {
-                "material_id": row.material_id,
-                "current_weight_kg": row.current_weight_kg,
-                "last_updated": row.last_updated.isoformat(),
-            }
-            for row in raw_inventory_rows
-        ],
-        "work_orders": [
-            {
-                "order_id": row.order_id,
-                "requesting_unit": row.requesting_unit,
-                "due_date": row.due_date.isoformat(),
-                "status": row.status,
-            }
-            for row in work_order_rows
-        ],
+        "machine_status": mac,
+        "raw_inventory": inv,
+        "work_orders": wo,
     }
 
 
@@ -371,7 +387,21 @@ async def get_dashboard_data() -> dict[str, Any]:
 async def get_hybrid_dashboard_data() -> dict[str, Any]:
     start_ts = asyncio.get_running_loop().time()
     payload = await app.state.mock_engine.snapshot()
+    mac, inv, wo = await _fetch_db_dashboard_state()
+    payload["machine_status"] = mac
+    payload["raw_inventory"] = inv
+    payload["work_orders"] = wo
+
     elapsed_ms = (asyncio.get_running_loop().time() - start_ts) * 1000.0
+    
+    # Introduce Artificial Latency/Jitter from DIL
+    jitter_ms = app.state.mock_engine.dil_config.get("jitter", 0.0)
+    latency_ms = app.state.mock_engine.dil_config.get("latency", 0.0)
+    if latency_ms > 0 or jitter_ms > 0:
+        import random
+        sim_delay = (latency_ms + (random.random() * jitter_ms)) / 1000.0
+        await asyncio.sleep(sim_delay)
+        elapsed_ms += (sim_delay * 1000.0)
 
     payload["mode"] = "hybrid"
     payload["latency_ms"] = round(elapsed_ms, 3)
@@ -425,6 +455,11 @@ async def get_hybrid_dashboard_data() -> dict[str, Any]:
 async def get_mock_dashboard_data() -> dict[str, Any]:
     start_ts = asyncio.get_running_loop().time()
     payload = await app.state.mock_engine.snapshot()
+    mac, inv, wo = await _fetch_db_dashboard_state()
+    payload["machine_status"] = mac
+    payload["raw_inventory"] = inv
+    payload["work_orders"] = wo
+    
     elapsed_ms = (asyncio.get_running_loop().time() - start_ts) * 1000.0
     payload["latency_ms"] = round(elapsed_ms, 3)
     return payload
@@ -434,3 +469,48 @@ async def get_mock_dashboard_data() -> dict[str, Any]:
 async def reset_mock_engine() -> dict[str, Any]:
     app.state.mock_engine.reset()
     return {"status": "ok", "message": "mock engine reset"}
+
+
+@app.post("/settings/dil")
+async def update_dil_settings(settings: DILSettingsRequest) -> dict[str, Any]:
+    app.state.mock_engine.dil_config = {
+        "r6_offline": settings.r6_offline,
+        "packet_loss": settings.packet_loss,
+        "latency": settings.latency,
+        "jitter": settings.jitter,
+    }
+    return {"status": "ok"}
+
+
+@app.post("/settings/routing")
+async def update_routing_settings(settings: RoutingSettingsRequest) -> dict[str, Any]:
+    if settings.algorithm in ["SPT", "EDD"]:
+        app.state.mock_engine.routing_algorithm = settings.algorithm
+    return {"status": "ok"}
+
+
+@app.get("/analytics/oee")
+async def get_oee_analytics() -> list[dict[str, Any]]:
+    # In a real app we'd query OEELog. For this demo, we can just aggregate on the fly 
+    # or return the mock engine's internal OEE. Since we haven't written OEE math in DB yet,
+    # let's calculate rough Availability/Performance/Quality here.
+    return []
+
+@app.get("/analytics/genealogy")
+async def get_genealogy_analytics() -> list[dict[str, Any]]:
+    from sqlalchemy import select
+    from .models import LotEvents
+    async with AsyncSessionLocal() as session:
+        result = await session.execute(select(LotEvents).order_by(LotEvents.timestamp.desc()).limit(100))
+        events = result.scalars().all()
+        return [
+            {
+                "event_id": e.event_id,
+                "serial_id": e.serial_id,
+                "station_point": e.station_point,
+                "status": e.status,
+                "timestamp": e.timestamp.isoformat(),
+            }
+            for e in events
+        ]
+

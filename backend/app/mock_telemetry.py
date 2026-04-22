@@ -6,6 +6,9 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from .config import HYBRID_SCHEMA_VERSION
+from .database import AsyncSessionLocal
+from .models import WorkOrders, MachineStatus, RawInventory, LotEvents, Genealogy
+from sqlalchemy import delete
 
 
 @dataclass(slots=True)
@@ -24,6 +27,9 @@ class MockJob:
 class MockTelemetryEngine:
     def __init__(self) -> None:
         self._lock = asyncio.Lock()
+        self.routing_algorithm = "SPT"
+        self.dil_config = {"r6_offline": False, "packet_loss": 0, "latency": 0, "jitter": 0}
+        self._pending_lot_events = []
         self._rng = random.Random(573)
         self._tick = 0
         self._sequence = 1000
@@ -116,6 +122,25 @@ class MockTelemetryEngine:
                 self._dispatch_jobs(tick_seconds)
                 self._spawn_jobs()
                 self._consume_inventory()
+                await self._sync_to_db()
+
+    async def _sync_to_db(self) -> None:
+        async with AsyncSessionLocal() as session:
+            for row in self._build_machine_status(self._build_nodes()):
+                await session.merge(MachineStatus(machine_id=row["machine_id"], current_state=row["current_state"], job_in_progress=row["job_in_progress"]))
+            
+            for row in self._build_inventory():
+                await session.merge(RawInventory(material_id=row["material_id"], current_weight_kg=row["current_weight_kg"], last_updated=datetime.fromisoformat(row["last_updated"])))
+
+            for job in self._jobs:
+                await session.merge(WorkOrders(order_id=job.job_id, requesting_unit=job.requesting_unit, due_date=datetime.fromisoformat(job.due_date_iso), status=job.status))
+
+            for ev in self._pending_lot_events:
+                # We mock serial_id with job_id string
+                session.add(LotEvents(serial_id=ev[0], station_point=ev[1], status=ev[2], timestamp=ev[3]))
+            self._pending_lot_events.clear()
+            
+            await session.commit()
 
     async def snapshot(self) -> dict[str, Any]:
         async with self._lock:
@@ -148,7 +173,13 @@ class MockTelemetryEngine:
         elif self._rng.random() < 0.025:
             self._status_overrides["r5"] = "Blocked"
 
-        if self._status_overrides["qia"] == "Offline":
+        if self.dil_config.get("r6_offline"):
+            self._status_overrides["r6"] = "Offline"
+        else:
+            if "r6" in self._status_overrides:
+                del self._status_overrides["r6"]
+
+        if self._status_overrides.get("qia", "") == "Offline":
             if self._rng.random() < 0.25:
                 self._status_overrides["qia"] = "Idle"
         elif self._rng.random() < 0.02:
@@ -186,13 +217,16 @@ class MockTelemetryEngine:
             total_processing_time=total_time,
         )
         self._jobs.append(job)
+        self._pending_lot_events.append((job.job_id, route[0], 'Entered', datetime.now(timezone.utc)))
 
     def _dispatch_jobs(self, tick_s: float) -> None:
         self._in_transition = {}
         completed: list[MockJob] = []
 
-        # Sort jobs by Shortest Processing Time (SPT) to simulate queueing theory Assignment 7 logic
-        self._jobs.sort(key=lambda j: j.total_processing_time)
+        if self.routing_algorithm == "SPT":
+            self._jobs.sort(key=lambda j: j.total_processing_time)
+        elif self.routing_algorithm == "EDD":
+            self._jobs.sort(key=lambda j: j.due_date_iso)
 
         processed_nodes = set()
 
@@ -227,6 +261,8 @@ class MockTelemetryEngine:
                 job.step_index += 1
                 self._in_transition[job.job_id] = (prev_node, next_node)
                 job.step_remaining_s = self._duration_for_node(next_node)
+                self._pending_lot_events.append((job.job_id, prev_node, "Left", datetime.now(timezone.utc)))
+                self._pending_lot_events.append((job.job_id, next_node, "Entered", datetime.now(timezone.utc)))
                 
                 # Rework Injection for Lathe -> Trash
                 if prev_node == "cncl" and self._rng.random() < 0.05:
@@ -234,6 +270,7 @@ class MockTelemetryEngine:
             else:
                 job.status = "Completed"
                 completed.append(job)
+                self._pending_lot_events.append((job.job_id, current_node, "Completed", datetime.now(timezone.utc)))
 
         if completed:
             completed_ids = {job.job_id for job in completed}
