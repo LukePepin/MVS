@@ -1,0 +1,1 @@
+﻿phase_start_utc=2026-04-22T13:22:45.3610608Z phase=normal improper_rate=0 duration_s=45
