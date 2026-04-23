@@ -8,10 +8,8 @@ Close out Week 5 with a verification-first MES increment that is showcase-ready.
 - Prioritize three expansions this week:
 1. Operator Dashboard
 2. Performance Panel
-3. Raspberry Pi extension
-- Use two physical Raspberry Pi nodes:
-1. Pi A as Supervisor Node
-2. Pi B as MITM test node
+3. Raspberry Pi extension *(DEFERRED TO BACKLOG)*
+- Physical Pi A (Supervisor) and Pi B (MITM) hardware endpoints exist but testing is postponed to focus on core MES logic.
 - Adversarial tests in scope:
 1. Packet loss / jamming simulation
 2. Livelock / deadlock stress tests
@@ -34,10 +32,9 @@ Close out Week 5 with a verification-first MES increment that is showcase-ready.
 - Include OEE-oriented metrics and shift-level summary outputs.
 - Tie displayed values to recorded backend artifacts.
 
-4. Raspberry Pi Extension (Primary)
-- Supervisor/MITM topology documented and repeatable.
-- Supervisor node controls or relays command flow.
-- MITM node used only for controlled adversarial experiment paths.
+4. Raspberry Pi Extension *(DEFERRED TO BACKLOG)*
+- Physical endpoints setup and architecture mapped, but full integration is postponed.
+- Adversarial tests utilizing these network nodes will move to the next-week backlog.
 
 5. Verification Evidence Pack
 - Passing test logs.
@@ -58,14 +55,11 @@ Close out Week 5 with a verification-first MES increment that is showcase-ready.
 - Validate that panels remain stable during adversarial scenarios.
 
 3. Raspberry Pi Testbed
-- Bring up Pi A supervisor role and baseline communication.
-- Bring up Pi B MITM role in isolated controlled test mode.
-- Validate experiment routing and failure-safe behavior.
+- *(DEFERRED)* Move network physical startup and baseline communication testing to the next iteration.
 
 4. Adversarial Campaign
-- Run packet loss/jamming scenario and capture logs.
-- Run livelock/deadlock stress scenario and capture outcomes.
-- Run replay attack scenario and capture detection/response.
+- *(DEFERRED)* Run formal adversarial experiments (packet loss, jamming, livelock) alongside Pi integration in subsequent weeks.
+- Note: Mock versions inside simulation are permitted, but hardware-level MITM is deferred.
 
 5. Documentation + Closure
 - Capture required screenshots and artifact outputs.
@@ -78,4 +72,4 @@ MES dashboard displays the testbed model effectively for showcase, adversarial t
 ## Assignment Closure Notes
 - Focus on completion quality, not added scope.
 - Keep verification traceable from scenario run to artifact.
-- Any deferred feature moves to next-week backlog with explicit reason.
+- Any deferred feature moves to next-week backlog with explicit reason. (e.g., Raspberry Pi MITM nodes and adversarial campaigns are deferred to prioritize the core MES database backend and MESA-11 implementations matching cMES.)

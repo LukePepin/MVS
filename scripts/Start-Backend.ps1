@@ -14,5 +14,12 @@ if (-not $env:MVS_SERIAL_BAUD) { $env:MVS_SERIAL_BAUD = "115200" }
 if (-not $env:MVS_SERIAL_STALE_TIMEOUT_S) { $env:MVS_SERIAL_STALE_TIMEOUT_S = "2.5" }
 if (-not $env:MVS_SCHEMA_VERSION) { $env:MVS_SCHEMA_VERSION = "1" }
 
+Write-Host "Checking and installing backend requirements (including PuLP/SimPy)..."
+pip install -r backend/requirements.txt
+
+Write-Host "Seeding MESA-11 Database Schema..."
+$env:PYTHONPATH = $root
+python backend/simulation/seed_db.py
+
 Write-Host "Starting backend (hybrid-ready) on http://localhost:8000 ..."
 uvicorn backend.app.main:app --host 0.0.0.0 --port 8000

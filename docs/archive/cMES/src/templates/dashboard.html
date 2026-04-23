@@ -1,0 +1,1743 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Pharma MES — ISE 573</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f0f2f5;color:#333;overflow-x:hidden}
+
+    /* ── Top bar ── */
+    .topbar{display:flex;justify-content:space-between;align-items:center;
+      background:linear-gradient(135deg,#1a252f,#2980b9);
+      color:white;padding:12px 24px;position:sticky;top:0;z-index:1000;
+      box-shadow:0 2px 10px rgba(0,0,0,.25);gap:16px;flex-wrap:wrap}
+    .topbar h1{font-size:1.5rem;font-weight:700;letter-spacing:.5px;white-space:nowrap}
+    .topbar-center{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+    .topbar-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+    .badge{background:rgba(255,255,255,.18);padding:5px 12px;border-radius:20px;
+      font-size:.82rem;font-weight:500;white-space:nowrap}
+    .badge.ok{background:rgba(39,174,96,.35)}
+    .badge.warn{background:rgba(243,156,18,.45)}
+    .badge.alarm{background:rgba(231,76,60,.5);animation:blink 1.2s infinite}
+    @keyframes blink{0%,100%{opacity:1}50%{opacity:.6}}
+
+    /* ── Nav buttons ── */
+    .nav-btn{background:rgba(255,255,255,.2);color:white;text-decoration:none;
+      padding:7px 16px;border-radius:20px;font-size:.85rem;font-weight:500;
+      border:2px solid rgba(255,255,255,.2);transition:all .25s;cursor:pointer}
+    .nav-btn:hover,.nav-btn.active{background:rgba(255,255,255,.35);
+      border-color:rgba(255,255,255,.5)}
+
+    /* ── Controls bar ── */
+    .ctrl-bar{display:flex;align-items:center;gap:12px;padding:10px 20px;
+      background:white;border-bottom:1px solid #dee2e6;flex-wrap:wrap}
+    .ctrl-btn{padding:6px 16px;border:none;border-radius:16px;font-size:.82rem;
+      font-weight:600;cursor:pointer;transition:all .2s}
+    .btn-start{background:#27ae60;color:white}
+    .btn-pause{background:#f39c12;color:white}
+    .ctrl-btn:hover{filter:brightness(1.12)}
+    .ctrl-group{display:flex;align-items:center;gap:6px;font-size:.82rem}
+    .ctrl-group label{font-weight:600;color:#555}
+    .ctrl-group select,.ctrl-group input[type=range]{border:1px solid #ccc;
+      border-radius:8px;padding:4px 8px;font-size:.8rem}
+
+    /* ── Info tooltip ⓘ ── */
+    .tip{position:relative;display:inline-block;cursor:help;color:#aaa;
+      font-size:.72rem;margin-left:3px;line-height:1;vertical-align:middle}
+    .tip::after{content:attr(data-tip);position:absolute;bottom:130%;left:50%;
+      transform:translateX(-50%);background:#1a2a4a;color:white;
+      padding:7px 11px;border-radius:7px;font-size:.72rem;line-height:1.45;
+      white-space:normal;width:230px;z-index:9999;
+      box-shadow:0 4px 16px rgba(0,0,0,.35);pointer-events:none;
+      opacity:0;transition:opacity .15s}
+    .tip:hover::after{opacity:1}
+
+    /* ── Ready banner ── */
+    .ready-banner{background:linear-gradient(90deg,#1a3a5a,#2471a3);
+      color:white;padding:10px 20px;font-size:.82rem;
+      display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+    .ready-banner.hidden{display:none}
+    .banner-pill{background:rgba(255,255,255,.18);border-radius:12px;
+      padding:3px 10px;font-size:.75rem;font-weight:600;white-space:nowrap}
+    .banner-pill.live{background:rgba(39,174,96,.4)}
+    .banner-pill.analysis{background:rgba(243,156,18,.4)}
+
+    /* ── Tabs ── */
+    .main{padding:16px;display:flex;flex-direction:column;gap:16px}
+    .tab-content{display:none}
+    .tab-content.active{display:block}
+
+    /* ── Cards ── */
+    .card{background:white;border-radius:12px;border:1px solid #e0e6ed;
+      box-shadow:0 2px 8px rgba(0,0,0,.06);overflow:visible}
+    .card-header{padding:10px 16px;font-weight:700;font-size:.9rem;
+      background:linear-gradient(135deg,#1a252f,#2c3e50);color:white;
+      display:flex;justify-content:space-between;align-items:center;
+      border-radius:12px 12px 0 0;position:relative;overflow:visible}
+    .card-body{padding:14px;border-radius:0 0 12px 12px;overflow:hidden}
+    /* Tooltips inside card-headers open downward to avoid clipping */
+    .card-header .tip::after{bottom:auto;top:calc(100% + 6px)}
+
+    /* ── Metric strip ── */
+    .metric-strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+    .metric-card{background:white;border-radius:10px;padding:12px 16px;
+      border:1px solid #e0e6ed;box-shadow:0 2px 6px rgba(0,0,0,.05);text-align:center}
+    .metric-card .val{font-size:1.8rem;font-weight:700;color:#2c3e50}
+    .metric-card .lbl{font-size:.72rem;color:#7f8c8d;margin-top:2px;
+      text-transform:uppercase;letter-spacing:.04em;display:flex;align-items:center;
+      justify-content:center;gap:3px}
+
+    /* ── FACTORY FLOOR ── */
+    #floor-wrapper{position:relative;width:100%;overflow-x:auto;
+      background:linear-gradient(180deg,#f8f9fa 0%,#eef1f5 100%);
+      border-radius:10px;padding:16px 10px}
+    #floor-svg{display:block;margin:auto}
+    #tokens-layer{position:absolute;top:16px;left:10px;pointer-events:none;
+      width:calc(100% - 20px);height:100%}
+    .batch-token{position:absolute;width:30px;height:30px;border-radius:50%;
+      display:flex;align-items:center;justify-content:center;
+      font-size:9px;font-weight:700;color:white;
+      box-shadow:0 2px 6px rgba(0,0,0,.35);
+      transition:left .9s cubic-bezier(.4,0,.2,1),top .9s cubic-bezier(.4,0,.2,1);
+      transform:translate(-50%,-50%);z-index:10;cursor:default;
+      border:2px solid rgba(255,255,255,.6)}
+    .batch-token:hover::after{content:attr(title);position:absolute;
+      bottom:36px;left:50%;transform:translateX(-50%);
+      background:rgba(0,0,0,.8);color:white;padding:4px 8px;
+      border-radius:6px;font-size:10px;white-space:nowrap;z-index:100}
+
+    /* ── Idle overlay ── */
+    #idle-overlay{position:absolute;inset:0;background:rgba(240,242,245,.88);
+      border-radius:10px;display:flex;flex-direction:column;
+      align-items:center;justify-content:center;gap:14px;z-index:20}
+    #idle-overlay.hidden{display:none}
+    #idle-overlay h2{color:#2c3e50;font-size:1.3rem}
+    #idle-overlay p{color:#7f8c8d;font-size:.88rem;text-align:center;max-width:360px}
+
+    /* WFI / HVAC strips */
+    .utility-strip{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+    .util-card{background:white;border-radius:8px;border:1px solid #dee2e6}
+    .util-card-header{padding:8px 14px;font-size:.78rem;font-weight:700;color:#555;
+      text-transform:uppercase;letter-spacing:.04em;background:#f8f9fa;
+      border-bottom:1px solid #dee2e6;display:flex;align-items:center;gap:6px}
+    .util-values{padding:8px 14px}
+    .util-row{display:flex;justify-content:space-between;align-items:center;
+      padding:2px 0;border-bottom:1px solid #f0f2f5;font-size:.8rem}
+    .util-row:last-child{border-bottom:none}
+    .util-val{font-weight:700;font-size:.85rem}
+    .util-val.ok{color:#27ae60}
+    .util-val.warn{color:#e67e22}
+    .util-val.alarm{color:#e74c3c;font-weight:900}
+    .status-dot{width:9px;height:9px;border-radius:50%;display:inline-block;flex-shrink:0}
+    .dot-ok{background:#27ae60}
+    .dot-warn{background:#f39c12;animation:blink 1.5s infinite}
+    .dot-alarm{background:#e74c3c;animation:blink 0.8s infinite}
+    .util-chart-wrap{padding:8px 10px 6px;height:90px}
+
+    /* Legend */
+    .legend{display:flex;gap:14px;flex-wrap:wrap;padding:8px 0;font-size:.78rem}
+    .legend-item{display:flex;align-items:center;gap:5px}
+    .legend-dot{width:13px;height:13px;border-radius:50%;flex-shrink:0}
+
+    /* Tables */
+    table{width:100%;border-collapse:collapse;font-size:.8rem}
+    th{background:#f4f6f8;padding:7px 10px;text-align:left;font-size:.72rem;
+       text-transform:uppercase;letter-spacing:.05em;color:#6b7785;
+       border-bottom:2px solid #dee2e6}
+    td{padding:6px 10px;border-bottom:1px solid #f4f6f8;vertical-align:middle}
+    tr:hover td{background:#f9fafb}
+    .pill{display:inline-block;padding:2px 8px;border-radius:10px;font-size:.7rem;font-weight:700}
+    .pill-ok{background:#d5f5e3;color:#1e8449}
+    .pill-warn{background:#fef9e7;color:#b7770d}
+    .pill-alarm{background:#fadbd8;color:#922b21}
+    .pill-info{background:#d6eaf8;color:#1a5276}
+    .pill-gray{background:#eaecee;color:#566573}
+
+    /* Charts */
+    .charts-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    @media(max-width:900px){.charts-grid{grid-template-columns:1fr}}
+    .chart-card{padding:12px}
+    .chart-card canvas{max-height:220px}
+
+    /* Events */
+    .event-log{max-height:500px;overflow-y:auto}
+    .event-row{display:flex;gap:10px;padding:6px 10px;border-bottom:1px solid #f4f6f8;
+      font-size:.78rem;align-items:flex-start}
+    .ev-ts{color:#888;white-space:nowrap;flex-shrink:0;font-family:monospace;font-size:.76rem}
+    .ev-badge{flex-shrink:0;font-size:.68rem;font-weight:700;padding:2px 7px;border-radius:10px;white-space:nowrap}
+    .ev-INFO{background:#d6eaf8;color:#1a5276}
+    .ev-WARNING{background:#fef9e7;color:#b7770d}
+    .ev-ALARM{background:#fadbd8;color:#922b21}
+    .ev-msg{flex:1;color:#333}
+
+    /* ── Results tab ── */
+    .part-header{background:linear-gradient(135deg,#1a252f,#2471a3);color:white;
+      padding:12px 18px;border-radius:10px 10px 0 0;font-size:.95rem;font-weight:700;
+      display:flex;align-items:center;gap:10px}
+    .part-header .pts{display:none}
+    .part-body{padding:16px;background:white;border:1px solid #dee2e6;
+      border-top:none;border-radius:0 0 10px 10px;margin-bottom:16px}
+    .finding-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-bottom:14px}
+    .finding-box{border-radius:8px;padding:12px 14px;text-align:center}
+    .finding-box.blue{background:#eaf4fb;border:1px solid #aed6f1}
+    .finding-box.green{background:#eafaf1;border:1px solid #a9dfbf}
+    .finding-box.orange{background:#fef9e7;border:1px solid #f9e79f}
+    .finding-box.red{background:#fdedec;border:1px solid #f1948a}
+    .finding-box .big{font-size:1.6rem;font-weight:800;color:#1a252f;line-height:1.1}
+    .finding-box .sub{font-size:.72rem;color:#666;margin-top:3px}
+    .img-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(380px,1fr));gap:14px;margin:12px 0}
+    .img-card{background:white;border:1px solid #dee2e6;border-radius:8px;overflow:hidden;text-align:center}
+    .img-card img{width:100%;display:block}
+    .img-card .img-caption{padding:6px 10px;font-size:.75rem;color:#666;background:#f8f9fa;
+      border-top:1px solid #eee;text-align:left}
+    .img-placeholder{background:#f4f6f8;height:180px;display:flex;align-items:center;
+      justify-content:center;color:#aaa;font-size:.82rem;flex-direction:column;gap:8px}
+    .res-table th{background:#1a252f;color:white;font-size:.72rem}
+    .res-table td{font-size:.8rem}
+    .best-row td{background:#eafaf1;font-weight:700}
+    .rec-box{background:linear-gradient(135deg,#1a3a2a,#27ae60);color:white;
+      border-radius:8px;padding:14px 18px;margin-top:12px}
+    .rec-box h4{margin:0 0 6px;font-size:.9rem}
+    .rec-box ul{margin:0;padding-left:18px;font-size:.82rem;line-height:1.7}
+    .param-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+      gap:8px;margin-bottom:12px}
+    .param-box{background:#f4f6f8;border-radius:6px;padding:8px 12px;font-size:.8rem}
+    .param-box .pk{font-weight:700;color:#2c3e50;font-size:.72rem;text-transform:uppercase;
+      letter-spacing:.04em;margin-bottom:2px}
+    .param-box .pv{color:#2980b9;font-weight:700}
+    .flow-step{display:flex;align-items:center;gap:8px;padding:5px 0;font-size:.82rem}
+    .flow-step-num{width:22px;height:22px;border-radius:50%;background:#2980b9;
+      color:white;font-size:.7rem;font-weight:700;display:flex;align-items:center;
+      justify-content:center;flex-shrink:0}
+    .flow-arrow{color:#aaa;font-size:.8rem;flex-shrink:0}
+
+    /* Analysis Modal */
+    .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);
+      z-index:2000;align-items:center;justify-content:center}
+    .modal-overlay.open{display:flex}
+    .modal-box{background:white;border-radius:12px;width:600px;max-width:95vw;
+      box-shadow:0 20px 60px rgba(0,0,0,.4);overflow:hidden}
+    .modal-header{background:linear-gradient(135deg,#1a2a4a,#2e4080);color:white;
+      padding:18px 22px;display:flex;align-items:center;justify-content:space-between}
+    .modal-header h3{margin:0;font-size:1rem}
+    .modal-close{background:none;border:none;color:white;font-size:1.4rem;cursor:pointer;line-height:1}
+    .modal-body{padding:20px 22px}
+    .analysis-step-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #f0f0f0}
+    .analysis-step-row:last-child{border-bottom:none}
+    .step-check{width:18px;height:18px;border-radius:50%;border:2px solid #ddd;flex-shrink:0;
+      display:flex;align-items:center;justify-content:center;font-size:.7rem}
+    .step-check.done{background:#27ae60;border-color:#27ae60;color:white}
+    .step-check.active{background:#f39c12;border-color:#f39c12;color:white;animation:blink .8s infinite alternate}
+    .step-check.error{background:#e74c3c;border-color:#e74c3c;color:white}
+    .step-label{font-size:.88rem;font-weight:600;color:#2c3e50;min-width:130px}
+    .step-desc{font-size:.78rem;color:#888;flex:1}
+    .progress-bar-wrap{height:6px;background:#eee;border-radius:3px;margin:12px 0;overflow:hidden}
+    .progress-bar-fill{height:100%;background:linear-gradient(90deg,#2980b9,#8e44ad);
+      border-radius:3px;transition:width .4s}
+    .log-panel{background:#1a1a2e;border-radius:6px;padding:10px 12px;max-height:180px;
+      overflow-y:auto;font-family:monospace;font-size:.72rem;color:#a8d8ea;margin-top:10px}
+    .modal-footer{padding:14px 22px;background:#f8f9fa;display:flex;gap:10px;
+      align-items:center;justify-content:flex-end}
+  </style>
+</head>
+<body>
+
+<!-- ── Top bar ──────────────────────────────────────────────────────────────── -->
+<div class="topbar">
+  <h1>💊 Pharma MES — ISE 573</h1>
+  <div class="topbar-center">
+    <span class="badge" id="badge-simtime">t = 0 min</span>
+    <span class="badge" id="badge-released">0 released</span>
+    <span class="badge" id="badge-wip">WIP: 0</span>
+    <span class="badge" id="badge-wfi">WFI: Normal</span>
+    <span class="badge" id="badge-hvac">HVAC: Normal</span>
+  </div>
+  <div class="topbar-right">
+    <button class="nav-btn active" onclick="showTab('floor',this)">Factory Floor</button>
+    <button class="nav-btn" onclick="showTab('analytics',this)">Analytics</button>
+    <button class="nav-btn" onclick="showTab('results',this)">📊 Sim Results</button>
+    <button class="nav-btn" onclick="showTab('mrp',this)">MRP / WO</button>
+    <button class="nav-btn" onclick="showTab('events',this)">Events</button>
+    <button class="nav-btn" onclick="showTab('guide',this)">❓ Guide</button>
+  </div>
+</div>
+
+<!-- ── Info banner ──────────────────────────────────────────────────────────── -->
+<div class="ready-banner" id="info-banner">
+  <span style="font-weight:700">Pharma MES Prototype</span>
+  <span class="banner-pill live">🟢 Live Factory Simulation — this dashboard</span>
+  <span class="banner-pill analysis">📊 Statistical Analysis — pre-computed by des_simulation.py (15 replications)</span>
+  <span style="margin-left:auto;font-size:.75rem;opacity:.8">
+    The factory floor below is a <strong>real-time visualization</strong> — batches move through stations as the SimPy engine runs.
+    The charts on the Analytics tab show results from a separate <strong>batch statistical study</strong> run beforehand.
+  </span>
+</div>
+
+<!-- ── Controls bar ─────────────────────────────────────────────────────────── -->
+<div class="ctrl-bar">
+  <button class="ctrl-btn btn-start" id="btn-start" onclick="ctrlCmd('start')">▶ Start</button>
+  <button class="ctrl-btn btn-pause" id="btn-pause" onclick="ctrlCmd('pause')" disabled>⏸ Pause</button>
+  <button class="ctrl-btn" style="background:#95a5a6;color:white" onclick="ctrlCmd('reset')">↺ Reset</button>
+  <button class="ctrl-btn" style="background:#8e44ad;color:white" id="btn-warp" onclick="ctrlCmd('finish_instantly')" disabled>
+    ⚡ Finish Instantly
+    <span class="tip" data-tip="Jumps the simulation to warp speed and auto-pauses once 30 batches have been released. Good for seeing the full picture quickly.">ⓘ</span>
+  </button>
+  <div class="ctrl-group">
+    <label>Speed <span class="tip" data-tip="How fast simulation time runs vs real time. At 30× speed, 30 simulated minutes pass every real second.">ⓘ</span></label>
+    <input type="range" id="speed-slider" min="5" max="120" value="30" oninput="setSpeed(this.value)">
+    <span id="speed-val">30×</span>
+  </div>
+  <div class="ctrl-group">
+    <label>Dispatch Rule <span class="tip" data-tip="Decides which batch gets processed next when a station becomes free. FIFO = oldest first (fairest). SPT = fastest job first (minimises average wait). EDD = most urgent deadline first (reduces lateness).">ⓘ</span></label>
+    <select id="rule-sel" onchange="setRule(this.value)">
+      <option value="FIFO">FIFO — First In, First Out</option>
+      <option value="SPT">SPT — Shortest Job First</option>
+      <option value="EDD">EDD — Earliest Deadline First</option>
+    </select>
+  </div>
+  <div class="ctrl-group">
+    <label>Filling Lines <span class="tip" data-tip="Number of parallel filling machines. Adding a 2nd machine is the single biggest throughput improvement — our analysis shows it cuts queue wait by 93%.">ⓘ</span></label>
+    <select id="fill-sel" onchange="setFilling(this.value)">
+      <option value="1">1 Line (Baseline)</option>
+      <option value="2">2 Lines (Scenario 1)</option>
+    </select>
+  </div>
+  <button class="ctrl-btn" style="background:#2980b9;color:white;margin-left:auto" onclick="openAnalysisModal()">⚙ Run Analysis</button>
+  <span style="font-size:.78rem;color:#888;margin-left:8px">ISE 573 — Week 7 | Connor Sheridan</span>
+</div>
+
+<!-- ── Main content ─────────────────────────────────────────────────────────── -->
+<div class="main">
+
+  <!-- Metric strip (always visible) -->
+  <div class="metric-strip">
+    <div class="metric-card">
+      <div class="val" id="m-wip">0</div>
+      <div class="lbl">WIP Batches <span class="tip" data-tip="Work In Progress — how many batches are currently inside the factory, somewhere between raw material intake and final release.">ⓘ</span></div>
+    </div>
+    <div class="metric-card">
+      <div class="val" id="m-released">0</div>
+      <div class="lbl">Released <span class="tip" data-tip="Total batches that have completed all steps and been approved for shipment.">ⓘ</span></div>
+    </div>
+    <div class="metric-card">
+      <div class="val" id="m-flow">—</div>
+      <div class="lbl">Avg Flow Time <span class="tip" data-tip="Average total time from when a batch enters as raw material to when it is released. This includes all processing and waiting time. Lower is better.">ⓘ</span></div>
+    </div>
+    <div class="metric-card">
+      <div class="val" id="m-util">—</div>
+      <div class="lbl">Filling Util % <span class="tip" data-tip="What fraction of time the filling machine is actively running (not idle, not broken). 50% is the theoretical value from queueing analysis.">ⓘ</span></div>
+    </div>
+    <div class="metric-card">
+      <div class="val" id="m-tput">—</div>
+      <div class="lbl">Throughput/h <span class="tip" data-tip="Batches completed and released per simulated hour. The theoretical max for this system is about 0.25 batches/h based on the filling bottleneck.">ⓘ</span></div>
+    </div>
+    <div class="metric-card">
+      <div class="val" id="m-breaks">0</div>
+      <div class="lbl">Breakdowns <span class="tip" data-tip="Times the filling machine has broken down and needed repair. Modelled as random events (average every 480 min, repair takes ~30 min).">ⓘ</span></div>
+    </div>
+  </div>
+
+  <!-- ── FLOOR TAB ──────────────────────────────────────────────────────────── -->
+  <div id="tab-floor" class="tab-content active">
+    <div class="card">
+      <div class="card-header">
+        Factory Floor — Sterile Injectable Process Flow
+        <span id="floor-status" style="font-size:.78rem;font-weight:400;opacity:.85">● Waiting to Start</span>
+      </div>
+      <div class="card-body" style="padding:10px">
+
+        <!-- Legend -->
+        <div class="legend">
+          <span style="font-weight:700;font-size:.78rem;color:#555">Batch color:</span>
+          <div class="legend-item"><div class="legend-dot" style="background:#3498db"></div>Injectable-A 100mg/mL</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#27ae60"></div>Injectable-B 50mg/mL</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#e67e22"></div>Injectable-C 25mg/mL</div>
+          <span style="margin-left:20px;font-weight:700;font-size:.78rem;color:#555">Station border:</span>
+          <div class="legend-item"><div class="legend-dot" style="background:#27ae60;border-radius:3px"></div>Idle</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#f39c12;border-radius:3px"></div>Busy</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#e74c3c;border-radius:3px"></div>Breakdown / Alarm</div>
+        </div>
+
+        <!-- Factory floor SVG + token overlay -->
+        <div id="floor-wrapper">
+
+          <!-- Idle overlay shown before simulation starts -->
+          <div id="idle-overlay">
+            <h2>⏸ Simulation Ready</h2>
+            <p>Press <strong>▶ Start</strong> in the controls bar to begin the factory floor simulation.</p>
+            <button class="ctrl-btn btn-start" onclick="ctrlCmd('start')" style="font-size:.95rem;padding:9px 24px">▶ Start Simulation</button>
+          </div>
+
+          <!--
+            PROCESS FLOW (left to right, then U-turn, right to left):
+            ① Raw Material → ② Quarantine → ③ Dispensing → ④ Compounding → ⑤ Sterile Filtration
+                                                                                       ↓ (elbow)
+            ⑨ Released ← ⑧ QA Hold ← ⑦ Inspection ← ⑥ Aseptic Filling (BOTTLENECK)
+          -->
+          <svg id="floor-svg" viewBox="0 0 1200 420" style="width:100%;max-width:1200px;display:block;margin:auto">
+            <defs>
+              <!-- Arrow marker -->
+              <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5"
+                markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                <path d="M0,1 L9,5 L0,9 Z" fill="#5d6d7e"/>
+              </marker>
+              <!-- Faded arrow for WFI -->
+              <marker id="arr-wfi" viewBox="0 0 10 10" refX="9" refY="5"
+                markerWidth="5" markerHeight="5" orient="auto">
+                <path d="M0,1 L9,5 L0,9 Z" fill="#1a5276"/>
+              </marker>
+              <linearGradient id="stBg" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#ffffff"/>
+                <stop offset="100%" stop-color="#f4f6f8"/>
+              </linearGradient>
+              <linearGradient id="stFill" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#fff5f5"/>
+                <stop offset="100%" stop-color="#fdecea"/>
+              </linearGradient>
+            </defs>
+
+            <!-- ── FLOW DIRECTION LABELS ──────────────────────── -->
+            <text x="20" y="28" font-size="10" fill="#888" font-style="italic">① START here — batches enter as raw materials</text>
+            <text x="580" y="28" font-size="10" fill="#888" font-style="italic" text-anchor="middle">→ Process flows left to right (Row 1), then right to left (Row 2) ↓</text>
+            <text x="340" y="414" font-size="10" fill="#27ae60" font-style="italic" font-weight="600" text-anchor="middle">⑨ END — batches released as finished product</text>
+
+            <!-- ── ROW 1 ARROWS (left → right) ──────────────────── -->
+            <!-- ①→② Raw Material to Quarantine -->
+            <line x1="182" y1="108" x2="258" y2="108" stroke="#5d6d7e" stroke-width="2.5" marker-end="url(#arr)"/>
+            <!-- ②→③ Quarantine to Dispensing -->
+            <line x1="422" y1="108" x2="498" y2="108" stroke="#5d6d7e" stroke-width="2.5" marker-end="url(#arr)"/>
+            <!-- ③→④ Dispensing to Compounding -->
+            <line x1="662" y1="108" x2="738" y2="108" stroke="#5d6d7e" stroke-width="2.5" marker-end="url(#arr)"/>
+            <!-- ④→⑤ Compounding to Filtration -->
+            <line x1="902" y1="108" x2="978" y2="108" stroke="#5d6d7e" stroke-width="2.5" marker-end="url(#arr)"/>
+
+            <!-- ── ELBOW (⑤ Filtration → down → ⑥ Filling) ─────── -->
+            <!-- Right side elbow path -->
+            <path d="M 1142 108 L 1175 108 L 1175 300 L 1142 300"
+              fill="none" stroke="#5d6d7e" stroke-width="2.5" marker-end="url(#arr)"/>
+            <!-- Corner label -->
+            <text x="1182" y="208" font-size="9" fill="#888" text-anchor="middle" transform="rotate(90,1182,208)">continues →</text>
+
+            <!-- ── ROW 2 ARROWS (right → left) ──────────────────── -->
+            <!-- ⑥→⑦ Filling to Inspection -->
+            <line x1="978" y1="300" x2="902" y2="300" stroke="#5d6d7e" stroke-width="2.5" marker-end="url(#arr)"/>
+            <!-- ⑦→⑧ Inspection to QA Hold -->
+            <line x1="738" y1="300" x2="662" y2="300" stroke="#5d6d7e" stroke-width="2.5" marker-end="url(#arr)"/>
+            <!-- ⑧→⑨ QA Hold to Released -->
+            <line x1="498" y1="300" x2="422" y2="300" stroke="#5d6d7e" stroke-width="2.5" marker-end="url(#arr)"/>
+
+            <!-- ── ROW 1 STATIONS ────────────────────────────────── -->
+
+            <!-- ① Raw Material (x=20, center=101) -->
+            <rect id="st-raw_material" x="20" y="70" width="162" height="76" rx="9" fill="url(#stBg)" stroke="#27ae60" stroke-width="2.5"/>
+            <text x="28" y="87" font-size="9" fill="#27ae60" font-weight="800">①</text>
+            <text x="101" y="92" text-anchor="middle" font-size="11" font-weight="700" fill="#1a252f">Raw Material</text>
+            <text x="101" y="107" text-anchor="middle" font-size="9.5" fill="#666">&amp; Quarantine Staging</text>
+            <text id="occ-raw_material" x="101" y="136" text-anchor="middle" font-size="9" fill="#888">IDLE</text>
+
+            <!-- ② Quarantine Hold (x=260, center=341) -->
+            <rect id="st-quarantine" x="260" y="70" width="162" height="76" rx="9" fill="#fefdf5" stroke="#f39c12" stroke-width="2" stroke-dasharray="7,3"/>
+            <text x="268" y="87" font-size="9" fill="#b7770d" font-weight="800">②</text>
+            <text x="341" y="92" text-anchor="middle" font-size="11" font-weight="700" fill="#b7770d">Quarantine Hold</text>
+            <text x="341" y="107" text-anchor="middle" font-size="9.5" fill="#888">Initial inspection (120 min)</text>
+            <text id="occ-quarantine" x="341" y="136" text-anchor="middle" font-size="9" fill="#888">IDLE</text>
+
+            <!-- ③ Dispensing (x=500, center=581) -->
+            <rect id="st-dispensing" x="500" y="70" width="162" height="76" rx="9" fill="url(#stBg)" stroke="#27ae60" stroke-width="2.5"/>
+            <text x="508" y="87" font-size="9" fill="#27ae60" font-weight="800">③</text>
+            <text x="581" y="92" text-anchor="middle" font-size="11" font-weight="700" fill="#1a252f">Dispensing</text>
+            <text x="581" y="107" text-anchor="middle" font-size="9.5" fill="#666">&amp; Weighing</text>
+            <text id="occ-dispensing" x="581" y="136" text-anchor="middle" font-size="9" fill="#888">IDLE</text>
+
+            <!-- ④ Compounding (x=740, center=821) -->
+            <rect id="st-compounding" x="740" y="70" width="162" height="76" rx="9" fill="url(#stBg)" stroke="#27ae60" stroke-width="2.5"/>
+            <text x="748" y="87" font-size="9" fill="#27ae60" font-weight="800">④</text>
+            <text x="821" y="92" text-anchor="middle" font-size="11" font-weight="700" fill="#1a252f">Compounding /</text>
+            <text x="821" y="107" text-anchor="middle" font-size="9.5" fill="#666">Solution Prep</text>
+            <text id="occ-compounding" x="821" y="136" text-anchor="middle" font-size="9" fill="#888">IDLE</text>
+
+            <!-- ⑤ Sterile Filtration (x=980, center=1061) -->
+            <rect id="st-filtration" x="980" y="70" width="162" height="76" rx="9" fill="url(#stBg)" stroke="#27ae60" stroke-width="2.5"/>
+            <text x="988" y="87" font-size="9" fill="#27ae60" font-weight="800">⑤</text>
+            <text x="1061" y="92" text-anchor="middle" font-size="11" font-weight="700" fill="#1a252f">Sterile</text>
+            <text x="1061" y="107" text-anchor="middle" font-size="9.5" fill="#666">Filtration</text>
+            <text id="occ-filtration" x="1061" y="136" text-anchor="middle" font-size="9" fill="#888">IDLE</text>
+
+            <!-- ── ROW 2 STATIONS ────────────────────────────────── -->
+
+            <!-- ⑥ Aseptic Filling — BOTTLENECK (x=980, center=1061) -->
+            <rect id="st-filling" x="980" y="262" width="162" height="76" rx="9" fill="url(#stFill)" stroke="#e74c3c" stroke-width="3"/>
+            <text x="988" y="279" font-size="9" fill="#c0392b" font-weight="800">⑥</text>
+            <text x="1061" y="284" text-anchor="middle" font-size="11" font-weight="700" fill="#1a252f">Aseptic Filling</text>
+            <text x="1061" y="299" text-anchor="middle" font-size="9" fill="#c0392b">⚡ BOTTLENECK</text>
+            <text id="occ-filling" x="1061" y="320" text-anchor="middle" font-size="9" fill="#888">IDLE</text>
+            <text id="q-filling" x="1061" y="332" text-anchor="middle" font-size="9" fill="#e74c3c"></text>
+
+            <!-- ⑦ Inspection (x=740, center=821) -->
+            <rect id="st-inspection" x="740" y="262" width="162" height="76" rx="9" fill="url(#stBg)" stroke="#27ae60" stroke-width="2.5"/>
+            <text x="748" y="279" font-size="9" fill="#27ae60" font-weight="800">⑦</text>
+            <text x="821" y="284" text-anchor="middle" font-size="11" font-weight="700" fill="#1a252f">Inspection</text>
+            <text x="821" y="299" text-anchor="middle" font-size="9.5" fill="#666">&amp; Packaging</text>
+            <text id="occ-inspection" x="821" y="328" text-anchor="middle" font-size="9" fill="#888">IDLE</text>
+
+            <!-- ⑧ QA Hold (x=500, center=581) -->
+            <rect id="st-qa_hold" x="500" y="262" width="162" height="76" rx="9" fill="#fefdf5" stroke="#f39c12" stroke-width="2" stroke-dasharray="7,3"/>
+            <text x="508" y="279" font-size="9" fill="#b7770d" font-weight="800">⑧</text>
+            <text x="581" y="284" text-anchor="middle" font-size="11" font-weight="700" fill="#b7770d">QA Release</text>
+            <text x="581" y="299" text-anchor="middle" font-size="9.5" fill="#888">Hold (180 min review)</text>
+            <text id="occ-qa_hold" x="581" y="328" text-anchor="middle" font-size="9" fill="#888">IDLE</text>
+
+            <!-- ⑨ Released (x=260, center=341) -->
+            <rect id="st-released" x="260" y="262" width="162" height="76" rx="9" fill="#eafaf1" stroke="#27ae60" stroke-width="2.5"/>
+            <text x="268" y="279" font-size="9" fill="#27ae60" font-weight="800">⑨</text>
+            <text x="341" y="289" text-anchor="middle" font-size="13" font-weight="700" fill="#1a252f">✓ Released</text>
+            <text id="occ-released" x="341" y="320" text-anchor="middle" font-size="10" fill="#27ae60" font-weight="700"></text>
+
+            <!-- ── WFI LOOP (decorative) ──────────────────────────── -->
+            <rect x="10" y="358" width="1180" height="22" rx="11"
+              fill="none" stroke="#1a5276" stroke-width="1.5" stroke-dasharray="8,4"/>
+            <text x="600" y="373" text-anchor="middle" font-size="10" fill="#1a5276" font-weight="600">
+              ══ WFI DISTRIBUTION LOOP — Water for Injection feeds Compounding, Filtration &amp; Filling ══
+            </text>
+            <!-- WFI taps -->
+            <line x1="581" y1="338" x2="581" y2="358" stroke="#1a5276" stroke-width="1.5"/>
+            <line x1="821" y1="338" x2="821" y2="358" stroke="#1a5276" stroke-width="1.5"/>
+            <line x1="1061" y1="338" x2="1061" y2="358" stroke="#1a5276" stroke-width="1.5"/>
+          </svg>
+
+          <!-- Animated batch tokens layer (overlays SVG) -->
+          <div id="tokens-layer"></div>
+        </div><!-- floor-wrapper -->
+
+        <!-- WFI + HVAC panels with live mini-charts -->
+        <div class="utility-strip">
+          <div class="util-card">
+            <div class="util-card-header">
+              <span id="wfi-dot" class="status-dot dot-ok"></span>
+              WFI System — Water for Injection
+              <span class="tip" data-tip="Water For Injection is highly purified water used in the drug solution. It must meet strict purity limits at all times. Any spike can trigger a batch hold.">ⓘ</span>
+            </div>
+            <div class="util-chart-wrap"><canvas id="chart-wfi"></canvas></div>
+            <div class="util-values">
+              <div class="util-row">
+                <span>Conductivity <span class="tip" data-tip="Measures water purity — must be below 1.3 µS/cm. Higher values mean more dissolved ions (contamination).">ⓘ</span></span>
+                <span class="util-val ok" id="wfi-cond">0.82 µS/cm</span>
+              </div>
+              <div class="util-row">
+                <span>Temperature</span>
+                <span class="util-val ok" id="wfi-temp">80.0 °C</span>
+              </div>
+              <div class="util-row">
+                <span>TOC <span class="tip" data-tip="Total Organic Carbon — measures how much organic contamination is in the water. Must be below 500 ppb for pharmaceutical use.">ⓘ</span></span>
+                <span class="util-val ok" id="wfi-toc">248 ppb</span>
+              </div>
+              <div class="util-row"><span>Status</span><span class="util-val ok" id="wfi-status">Normal</span></div>
+            </div>
+          </div>
+          <div class="util-card">
+            <div class="util-card-header">
+              <span id="hvac-dot" class="status-dot dot-ok"></span>
+              Cleanroom HVAC — ISO Class 5 / 7
+              <span class="tip" data-tip="Cleanroom air control system. Sterile injectable manufacturing requires tightly controlled temperature, humidity, and airborne particle counts to prevent contamination.">ⓘ</span>
+            </div>
+            <div class="util-chart-wrap"><canvas id="chart-hvac"></canvas></div>
+            <div class="util-values">
+              <div class="util-row">
+                <span>Temperature (target 22°C)</span>
+                <span class="util-val ok" id="hvac-temp">22.0 °C</span>
+              </div>
+              <div class="util-row">
+                <span>Relative Humidity (35–55%)</span>
+                <span class="util-val ok" id="hvac-hum">45.0 %</span>
+              </div>
+              <div class="util-row">
+                <span>Particles 0.5µm <span class="tip" data-tip="Airborne particle count. ISO Class 5 (filling zone) requires ≤3,520 particles/m³. Higher counts risk product contamination.">ⓘ</span></span>
+                <span class="util-val ok" id="hvac-part">2000 /m³</span>
+              </div>
+              <div class="util-row"><span>Status</span><span class="util-val ok" id="hvac-status">Normal</span></div>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- card-body -->
+    </div><!-- card -->
+  </div><!-- tab-floor -->
+
+  <!-- ── ANALYTICS TAB ───────────────────────────────────────────────────────── -->
+  <div id="tab-analytics" class="tab-content">
+    <div style="background:#fff8e7;border:1px solid #f5cba7;border-radius:8px;padding:12px 16px;margin-bottom:12px;font-size:.82rem;color:#7d6608">
+      <strong>📊 About these charts:</strong> WIP and Queue are <em>live</em> from the running simulation.
+      The Utilization bars show the <em>analytical queueing theory values</em> (ρ = λ/μ) computed by <code>queueing_analysis.py</code>.
+      The Throughput chart tracks cumulative releases in the live simulation.
+    </div>
+    <div class="charts-grid">
+      <div class="card chart-card">
+        <div class="card-header">
+          WIP Over Time
+          <span style="font-weight:400;font-size:.75rem" class="tip" data-tip="Work In Progress: number of batches inside the factory at each moment. A stable WIP means the system is in steady state. Rising WIP means batches are piling up.">ⓘ</span>
+        </div>
+        <div class="card-body"><canvas id="chart-wip"></canvas></div>
+      </div>
+      <div class="card chart-card">
+        <div class="card-header">
+          Queue at Aseptic Filling (Bottleneck)
+          <span style="font-weight:400;font-size:.75rem" class="tip" data-tip="How many batches are waiting to get into the filling machine. This is the main queue in the system. Adding a 2nd filling line would eliminate most of this queue.">ⓘ</span>
+        </div>
+        <div class="card-body"><canvas id="chart-queue"></canvas></div>
+      </div>
+      <div class="card chart-card">
+        <div class="card-header">
+          Station Utilization — Queueing Theory (ρ = λ/μ)
+          <span style="font-weight:400;font-size:.75rem" class="tip" data-tip="How busy each station is on average. Calculated analytically from arrival rates and processing times (not live simulation). Filling at 50% is the limiting factor.">ⓘ</span>
+        </div>
+        <div class="card-body"><canvas id="chart-util"></canvas></div>
+      </div>
+      <div class="card chart-card">
+        <div class="card-header">Cumulative Throughput (Live)</div>
+        <div class="card-body"><canvas id="chart-tput"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── MRP / WO TAB ─────────────────────────────────────────────────────────── -->
+  <div id="tab-mrp" class="tab-content">
+    <div style="background:#eaf4fb;border:1px solid #aed6f1;border-radius:8px;padding:12px 16px;margin-bottom:12px;font-size:.82rem;color:#1a5276">
+      <strong>📋 About this tab:</strong>
+      These tables show data from the <strong>database</strong> (Sheridan_573), written by
+      <code>mrp_scheduler.py</code>. Work Orders are production jobs. MRP Planned Orders tell
+      you what raw materials to order and when. The Schedule shows the sequence the factory
+      plans to process each batch. Click ↻ Refresh or re-run MRP via ⚙ Run Analysis to update.
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="card">
+        <div class="card-header">
+          Work Orders
+          <span class="tip" data-tip="A Work Order is a production request — it says: make X units of product Y by date Z. Each dot on the factory floor represents one work order being processed.">ⓘ</span>
+          <button onclick="loadMRP()" style="background:rgba(255,255,255,.2);border:none;color:white;border-radius:10px;padding:2px 10px;cursor:pointer;font-size:.75rem;margin-left:auto">↻ Refresh</button>
+        </div>
+        <div class="card-body" style="padding:0">
+          <div style="overflow-x:auto;max-height:400px;overflow-y:auto">
+            <table><thead><tr><th>WO ID</th><th>Product</th><th>Qty</th><th>Due Date</th><th>Priority</th><th>Status</th></tr></thead>
+            <tbody id="wo-tbody"><tr><td colspan="6" style="text-align:center;color:#888;padding:20px">Loading…</td></tr></tbody></table>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          MRP Planned Orders
+          <span class="tip" data-tip="MRP (Material Requirements Planning) calculates exactly what raw materials you need to order and when, based on the Work Orders and Bill of Materials. Past-due means you needed to order it already.">ⓘ</span>
+        </div>
+        <div class="card-body" style="padding:0">
+          <div style="overflow-x:auto;max-height:400px;overflow-y:auto">
+            <table><thead><tr><th>Item</th><th>Need Wk</th><th>Release Wk</th><th>Qty</th><th>Status</th></tr></thead>
+            <tbody id="mrp-tbody"><tr><td colspan="5" style="text-align:center;color:#888;padding:20px">Loading…</td></tr></tbody></table>
+          </div>
+        </div>
+      </div>
+      <div class="card" style="grid-column:span 2">
+        <div class="card-header">
+          EDD Schedule — Filling Suite 1
+          <span class="tip" data-tip="The planned sequence of batches through the filling machine, sorted by Earliest Due Date. This is the output of the scheduling algorithm — it tells operators what order to process jobs.">ⓘ</span>
+        </div>
+        <div class="card-body" style="padding:0">
+          <div style="overflow-x:auto;max-height:280px;overflow-y:auto">
+            <table><thead><tr><th>WO</th><th>Work Center</th><th>Algorithm</th><th>Planned Start</th><th>Planned End</th><th>Status</th></tr></thead>
+            <tbody id="sched-tbody"><tr><td colspan="6" style="text-align:center;color:#888;padding:20px">Loading…</td></tr></tbody></table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── SIMULATION RESULTS TAB ──────────────────────────────────────────────────── -->
+  <div id="tab-results" class="tab-content">
+
+    <!-- PART 1 ──────────────────────────────────────────────────────────────── -->
+    <div class="part-header">
+      Part 1 — Queueing Theory Analysis
+      <span style="font-size:.78rem;font-weight:400;margin-left:8px">λ = 1/240 batches/min &nbsp;|&nbsp; All stations analysed with M/M/1, M/M/c, M/G/1</span>
+    </div>
+    <div class="part-body">
+
+      <div class="finding-grid">
+        <div class="finding-box blue">
+          <div class="big">Aseptic Filling</div>
+          <div class="sub">Bottleneck — highest ρ = 0.50</div>
+        </div>
+        <div class="finding-box red">
+          <div class="big">120 min</div>
+          <div class="sub">M/M/1 queue wait at filling (Wq)</div>
+        </div>
+        <div class="finding-box green">
+          <div class="big">8 min</div>
+          <div class="sub">M/M/2 queue wait — 2nd machine (−93%)</div>
+        </div>
+        <div class="finding-box orange">
+          <div class="big">62.4 min</div>
+          <div class="sub">M/G/1 wait with realistic CV=0.20</div>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+        <!-- M/M/1 table -->
+        <div>
+          <div style="font-weight:700;font-size:.82rem;margin-bottom:6px;color:#2c3e50">
+            M/M/1 — All Stations
+            <span class="tip" data-tip="Assumes Poisson arrivals, exponential service, single server. ρ = λ/μ must be < 1 for stability.">ⓘ</span>
+          </div>
+          <table class="res-table">
+            <thead><tr><th>Station</th><th>ρ</th><th>Wq (min)</th><th>W (min)</th><th>L</th></tr></thead>
+            <tbody>
+              <tr><td>Raw Material &amp; Quar.</td><td>0.125</td><td>4.3</td><td>34.3</td><td>0.143</td></tr>
+              <tr><td>Dispensing &amp; Weighing</td><td>0.188</td><td>10.4</td><td>55.4</td><td>0.231</td></tr>
+              <tr><td>Compounding</td><td>0.375</td><td>54.0</td><td>144.0</td><td>0.600</td></tr>
+              <tr><td>Sterile Filtration</td><td>0.250</td><td>20.0</td><td>80.0</td><td>0.333</td></tr>
+              <tr style="background:#fdedec;font-weight:700"><td>⚡ Aseptic Filling</td><td>0.500</td><td>120.0</td><td>240.0</td><td>1.000</td></tr>
+              <tr><td>Inspection &amp; Packaging</td><td>0.188</td><td>10.4</td><td>55.4</td><td>0.231</td></tr>
+            </tbody>
+          </table>
+          <div style="font-size:.72rem;color:#888;margin-top:4px">All ρ &lt; 1 → system stable ✓ &nbsp;|&nbsp; Little's Law L = λW verified to 0.000001 error</div>
+        </div>
+
+        <!-- M/M/c + M/G/1 tables -->
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <div>
+            <div style="font-weight:700;font-size:.82rem;margin-bottom:6px;color:#2c3e50">
+              M/M/c — Aseptic Filling (Pooled Servers)
+              <span class="tip" data-tip="Adding a 2nd filling machine pools the queue. Erlang-C formula gives P(wait) = 10% vs 50% for a single machine.">ⓘ</span>
+            </div>
+            <table class="res-table">
+              <thead><tr><th>Config</th><th>ρ/server</th><th>P(wait)</th><th>Wq (min)</th><th>W (min)</th></tr></thead>
+              <tbody>
+                <tr style="background:#fdedec"><td>c = 1 (baseline)</td><td>0.500</td><td>50.0%</td><td>120.0</td><td>240.0</td></tr>
+                <tr style="background:#eafaf1;font-weight:700"><td>c = 2 (add machine)</td><td>0.250</td><td>10.0%</td><td>8.0</td><td>128.0</td></tr>
+              </tbody>
+            </table>
+            <div style="font-size:.72rem;color:#27ae60;margin-top:3px">→ Adding a 2nd machine reduces Wq by <strong>93.3%</strong></div>
+          </div>
+          <div>
+            <div style="font-weight:700;font-size:.82rem;margin-bottom:6px;color:#2c3e50">
+              M/G/1 — Pollaczek-Khinchine Formula (Realistic CV)
+              <span class="tip" data-tip="P-K formula: Wq = ρ·E[S]·(1+CV²) / (2·(1−ρ)). M/M/1 over-estimates wait when CV < 1 (service is more predictable than exponential).">ⓘ</span>
+            </div>
+            <table class="res-table">
+              <thead><tr><th>Station</th><th>CV</th><th>ρ</th><th>Wq M/G/1</th><th>vs M/M/1</th></tr></thead>
+              <tbody>
+                <tr><td>Raw Material</td><td>0.15</td><td>0.125</td><td>2.2 min</td><td>−49%</td></tr>
+                <tr><td>Dispensing</td><td>0.15</td><td>0.188</td><td>5.3 min</td><td>−49%</td></tr>
+                <tr><td>Compounding</td><td>0.10</td><td>0.375</td><td>27.3 min</td><td>−49%</td></tr>
+                <tr><td>Filtration</td><td>0.15</td><td>0.250</td><td>10.2 min</td><td>−49%</td></tr>
+                <tr style="background:#fef9e7;font-weight:700"><td>⚡ Filling</td><td>0.20</td><td>0.500</td><td>62.4 min</td><td>−48%</td></tr>
+                <tr><td>Inspection</td><td>0.15</td><td>0.188</td><td>5.3 min</td><td>−49%</td></tr>
+              </tbody>
+            </table>
+            <div style="font-size:.72rem;color:#888;margin-top:3px">M/M/1 assumes CV=1 (exponential). P-K correction factor (1+CV²)/2 &lt; 1 when CV &lt; 1.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PARTS 2–3 ────────────────────────────────────────────────────────────── -->
+    <div class="part-header">
+      Parts 2–3 — DES Model &amp; Statistical Analysis
+      <span style="font-size:.78rem;font-weight:400;margin-left:8px">SimPy · 15 replications · 15,000 min each · Welch warm-up · 95% CI · Paired t-test CRN</span>
+    </div>
+    <div class="part-body">
+
+      <!-- Model parameters -->
+      <div style="font-weight:700;font-size:.82rem;margin-bottom:8px;color:#2c3e50">Model Parameters</div>
+      <div class="param-grid">
+        <div class="param-box"><div class="pk">Arrival Process</div><div class="pv">Poisson (M) — λ = 1/240 /min</div></div>
+        <div class="param-box"><div class="pk">Work Centers</div><div class="pv">6 PriorityResource queues</div></div>
+        <div class="param-box"><div class="pk">Service Times</div><div class="pv">Lognormal per station (CV 0.10–0.20)</div></div>
+        <div class="param-box"><div class="pk">Breakdowns (Filling)</div><div class="pv">MTTF = 480 min · MTTR = 30 min</div></div>
+        <div class="param-box"><div class="pk">Replications</div><div class="pv">15 independent seeds (0–14)</div></div>
+        <div class="param-box"><div class="pk">Run Length</div><div class="pv">15,000 min (~10 days) each</div></div>
+        <div class="param-box"><div class="pk">Warm-up Period</div><div class="pv">2,000 min (Welch method)</div></div>
+        <div class="param-box"><div class="pk">Products</div><div class="pv">Injectable-A/B/C (mult 1.00 / 0.88 / 0.74)</div></div>
+      </div>
+
+      <!-- Baseline 95% CI callout -->
+      <div style="background:#eaf4fb;border:1px solid #aed6f1;border-radius:8px;padding:12px 16px;margin-bottom:12px;font-size:.82rem">
+        <strong>Baseline (FIFO, 1 filling line) — 95% Confidence Intervals across 15 replications:</strong><br>
+        Mean flow time ≈ <strong>703.6 min (~11.7 h)</strong> &nbsp;|&nbsp;
+        Mean WIP ≈ <strong>2.9 batches</strong> &nbsp;|&nbsp;
+        Filling utilisation ≈ <strong>50.2%</strong> &nbsp;|&nbsp;
+        Throughput ≈ <strong>0.213 batches/h</strong>
+      </div>
+
+      <!-- Paired t-test callout -->
+      <div style="background:#eafaf1;border:1px solid #a9dfbf;border-radius:8px;padding:12px 16px;margin-bottom:14px;font-size:.82rem">
+        <strong>Paired t-test (FIFO vs SPT, Common Random Numbers):</strong><br>
+        FIFO mean flow ≈ 703.6 min &nbsp; SPT mean flow ≈ 696.6 min &nbsp;|&nbsp;
+        Difference = <strong>7.0 min &nbsp;95% CI [0.5, 13.5]</strong> &nbsp;|&nbsp;
+        t-statistic ≈ 2.3 &nbsp;|&nbsp; <strong>p ≈ 0.04 → statistically significant at α = 0.05</strong><br>
+        <span style="color:#27ae60">→ SPT dispatching produces a measurably shorter flow time. CRN amplified the signal by controlling random noise.</span>
+      </div>
+
+      <!-- Figures 1–3 -->
+      <div class="img-grid">
+        <div class="img-card">
+          <img src="/outputs/fig1_welch_warmup.png" onerror="this.parentElement.innerHTML='<div class=\'img-placeholder\'><span>📊</span><span>fig1_welch_warmup.png</span><span style=\'font-size:.7rem\'>Run the Simulation step to generate</span></div>'">
+          <div class="img-caption"><strong>Fig 1 — Welch Warm-up Analysis.</strong> Rolling average of WIP across replications. The red dashed line marks the validated warm-up cut-off (~2,000 min) where the system reaches steady state.</div>
+        </div>
+        <div class="img-card">
+          <img src="/outputs/fig2_wip_replications.png" onerror="this.parentElement.innerHTML='<div class=\'img-placeholder\'><span>📊</span><span>fig2_wip_replications.png</span><span style=\'font-size:.7rem\'>Run the Simulation step to generate</span></div>'">
+          <div class="img-caption"><strong>Fig 2 — WIP Across 15 Replications.</strong> Each line is one replication. The band shows run-to-run variability. Used to validate steady-state and compute 95% CI.</div>
+        </div>
+        <div class="img-card">
+          <img src="/outputs/fig3_queue_filling.png" onerror="this.parentElement.innerHTML='<div class=\'img-placeholder\'><span>📊</span><span>fig3_queue_filling.png</span><span style=\'font-size:.7rem\'>Run the Simulation step to generate</span></div>'">
+          <div class="img-caption"><strong>Fig 3 — Queue Length at Aseptic Filling.</strong> Confirms the filling machine is the bottleneck — queue builds up here more than any other station.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PART 4 ──────────────────────────────────────────────────────────────── -->
+    <div class="part-header">
+      Part 4 — What-If Scenario Analysis
+      <span style="font-size:.78rem;font-weight:400;margin-left:8px">5 scenarios × 15 replications each · Results from database</span>
+    </div>
+    <div class="part-body">
+
+      <!-- Dynamic scenario table from DB -->
+      <div style="font-weight:700;font-size:.82rem;margin-bottom:8px;color:#2c3e50">
+        Scenario Comparison — Mean Flow Time &amp; 95% CI
+        <span class="tip" data-tip="Each scenario was run with 15 independent replications. Lower mean flow time = better performance. The 95% CI tells you the range of true mean values.">ⓘ</span>
+        <span id="sim-results-status" style="font-size:.72rem;color:#888;font-weight:400;margin-left:8px"></span>
+      </div>
+      <div id="scenario-table-wrap" style="overflow-x:auto;margin-bottom:14px">
+        <table class="res-table" id="scenario-table">
+          <thead><tr>
+            <th>Scenario</th><th>Dispatch</th><th>Mean Flow (min)</th>
+            <th>95% CI</th><th>Mean WIP</th><th>Filling Util%</th>
+            <th>Queue at Fill</th><th>Reps</th>
+          </tr></thead>
+          <tbody id="scenario-tbody">
+            <tr><td colspan="8" style="text-align:center;color:#888;padding:20px">
+              Loading… (run the Simulation step via ⚙ Run Analysis if table is empty)
+            </td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Figures 4–6 -->
+      <div class="img-grid">
+        <div class="img-card">
+          <img src="/outputs/fig4_dispatching_boxplot.png" onerror="this.parentElement.innerHTML='<div class=\'img-placeholder\'><span>📊</span><span>fig4_dispatching_boxplot.png</span><span style=\'font-size:.7rem\'>Run the Simulation step to generate</span></div>'">
+          <div class="img-caption"><strong>Fig 4 — Dispatching Rule Comparison (Box Plots).</strong> Flow time distributions for FIFO, SPT, and EDD across 15 replications. SPT has lower median and tighter spread.</div>
+        </div>
+        <div class="img-card">
+          <img src="/outputs/fig5_scenario_comparison.png" onerror="this.parentElement.innerHTML='<div class=\'img-placeholder\'><span>📊</span><span>fig5_scenario_comparison.png</span><span style=\'font-size:.7rem\'>Run the Simulation step to generate</span></div>'">
+          <div class="img-caption"><strong>Fig 5 — All Scenario Mean Flow Times.</strong> Bar chart with 95% CI error bars. The 2nd filling machine scenario has by far the largest impact.</div>
+        </div>
+        <div class="img-card">
+          <img src="/outputs/fig6_utilization.png" onerror="this.parentElement.innerHTML='<div class=\'img-placeholder\'><span>📊</span><span>fig6_utilization.png</span><span style=\'font-size:.7rem\'>Run the Simulation step to generate</span></div>'">
+          <div class="img-caption"><strong>Fig 6 — Station Utilization by Scenario.</strong> Adding a 2nd filling line drops filling utilisation from ~50% to ~25%, eliminating queue buildup.</div>
+        </div>
+      </div>
+
+      <!-- Recommendations -->
+      <div class="rec-box">
+        <h4>🏭 MES Recommendations — Ranked by Impact</h4>
+        <ul>
+          <li><strong>Priority 1 — Add a 2nd filling machine:</strong> Reduces mean flow time by ~47% (703 → 373 min). Consistent with M/M/2 queueing prediction (Wq 120 → 8 min, −93%). Single largest improvement possible.</li>
+          <li><strong>Priority 2 — Standardise procedures (reduce CV 50%):</strong> Reduces flow time by ~11% (703 → 628 min). Achievable through tighter SOPs, operator training, and automated dispensing.</li>
+          <li><strong>Priority 3 — Implement SPT dispatching at filling:</strong> Statistically significant 7-min reduction (p = 0.04, CRN paired t-test). Zero capital cost — a software change in the MES.</li>
+          <li><strong>EDD dispatching:</strong> Not significantly different from FIFO in this model (p &gt; 0.05). May still be preferred operationally when order lateness penalties are high.</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- PART 5 ──────────────────────────────────────────────────────────────── -->
+    <div class="part-header">
+      Part 5 — First Prototype: MES Integration
+      <span style="font-size:.78rem;font-weight:400;margin-left:8px">PostgreSQL · EDD/SPT Scheduling · PuLP Optimisation · MRP Explosion · ISA-95 Level 3</span>
+    </div>
+    <div class="part-body">
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+        <!-- ISA-95 data flow -->
+        <div>
+          <div style="font-weight:700;font-size:.82rem;margin-bottom:10px;color:#2c3e50">ISA-95 Level 3 Data Flow</div>
+          <div class="flow-step"><div class="flow-step-num">1</div><div><strong>Work Order Entry</strong> — production request (product, qty, due date) created in <code>work_orders</code> table</div></div>
+          <div class="flow-step"><div class="flow-step-num" style="background:#888">↓</div><div class="flow-arrow"></div></div>
+          <div class="flow-step"><div class="flow-step-num">2</div><div><strong>MRP Explosion</strong> — Bill of Materials exploded level-by-level; net requirements calculated; planned orders written to <code>mrp_plan</code></div></div>
+          <div class="flow-step"><div class="flow-step-num" style="background:#888">↓</div></div>
+          <div class="flow-step"><div class="flow-step-num">3</div><div><strong>Scheduling</strong> — EDD and SPT algorithms compare tardiness; best schedule saved to <code>schedule</code> table</div></div>
+          <div class="flow-step"><div class="flow-step-num" style="background:#888">↓</div></div>
+          <div class="flow-step"><div class="flow-step-num">4</div><div><strong>PuLP Optimisation</strong> — multi-product, multi-period LP minimises production + holding cost subject to weekly capacity; written to <code>mrp_plan</code> (status='optimized')</div></div>
+          <div class="flow-step"><div class="flow-step-num" style="background:#888">↓</div></div>
+          <div class="flow-step"><div class="flow-step-num">5</div><div><strong>Dispatch Queue</strong> — ordered sequence built from optimised schedule; written to <code>dispatch_queue</code>; drives the live factory floor simulation</div></div>
+        </div>
+
+        <!-- Database summary -->
+        <div>
+          <div style="font-weight:700;font-size:.82rem;margin-bottom:10px;color:#2c3e50">Database — Sheridan_573 (PostgreSQL)</div>
+          <table class="res-table">
+            <thead><tr><th>Table</th><th>Contents</th><th>Rows</th></tr></thead>
+            <tbody id="db-summary-tbody">
+              <tr><td>products</td><td>INJ_A, INJ_B, INJ_C</td><td>3</td></tr>
+              <tr><td>items</td><td>Finished goods, components, raw materials</td><td>14</td></tr>
+              <tr><td>bom</td><td>Parent–child quantities (Bill of Materials)</td><td>21</td></tr>
+              <tr><td>work_orders</td><td>Production orders with due dates</td><td>9+</td></tr>
+              <tr><td>materials_inventory</td><td>On-hand lots (approved / quarantine)</td><td>11</td></tr>
+              <tr><td>mrp_plan</td><td>Planned + optimised orders from MRP</td><td>~15</td></tr>
+              <tr><td>schedule</td><td>EDD/SPT work centre assignments</td><td>9+</td></tr>
+              <tr><td>dispatch_queue</td><td>Prioritised station queue</td><td>~9</td></tr>
+              <tr><td>batch_log</td><td>Actual batch execution records</td><td>live</td></tr>
+              <tr><td>events_log</td><td>INFO / WARNING / ALARM log</td><td>live</td></tr>
+              <tr><td>simulation_results</td><td>Queueing + DES scenario results</td><td>~90</td></tr>
+            </tbody>
+          </table>
+          <div style="margin-top:10px;font-size:.8rem;color:#555">
+            <strong>MRP Lot Sizing:</strong> L4L (Lot for Lot) for finished goods — make exactly what's needed.
+            FOQ (Fixed Order Quantity) for components and raw materials — order in economical batch sizes.<br><br>
+            <strong>Scheduling result:</strong> EDD minimises tardiness (0 late jobs in baseline).
+            SPT reduces average flow time by 7 min (statistically significant, p = 0.04).<br><br>
+            <strong>PuLP result:</strong> Optimal production plan found. Total cost ≈ $431,000 over 4-week horizon.
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top:14px;font-size:.82rem;color:#555;background:#f8f9fa;border-radius:8px;padding:12px 16px;border:1px solid #dee2e6">
+        📋 <strong>See the MRP / WO tab</strong> for live database tables (Work Orders, MRP Planned Orders, EDD Schedule).
+        Use <strong>⚙ Run Analysis → MRP/Sched</strong> to re-run the full scheduling and optimisation pipeline.
+      </div>
+    </div>
+
+  </div><!-- tab-results -->
+
+  <!-- ── EVENTS TAB ────────────────────────────────────────────────────────────── -->
+  <div id="tab-events" class="tab-content">
+    <div class="card">
+      <div class="card-header">
+        System Events &amp; Alarms
+        <span class="tip" data-tip="Live log of events from the running simulation: batch arrivals, station starts, machine breakdowns, and releases. ALARMs indicate something needs attention.">ⓘ</span>
+        <span id="alarm-count" style="font-size:.78rem;font-weight:400;margin-left:auto">0 alarms</span>
+      </div>
+      <div class="card-body" style="padding:0">
+        <div class="event-log" id="event-log"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── GUIDE TAB ─────────────────────────────────────────────────────────────── -->
+  <div id="tab-guide" class="tab-content">
+
+    <div style="max-width:900px;margin:0 auto;display:flex;flex-direction:column;gap:20px">
+
+      <!-- Header -->
+      <div style="background:linear-gradient(135deg,#1a252f,#2980b9);border-radius:12px;
+           padding:24px 28px;color:white">
+        <h2 style="margin:0 0 8px;font-size:1.4rem">Pharma MES — System Guide</h2>
+        <p style="margin:0;font-size:.88rem;opacity:.85;line-height:1.6">
+          ISE 573 Week 7 &nbsp;·&nbsp; Connor Sheridan &nbsp;·&nbsp; University of Rhode Island<br>
+          A Manufacturing Execution System prototype for a sterile injectable pharmaceutical facility.
+          This guide explains every page, control, and metric in plain language.
+        </p>
+      </div>
+
+      <!-- What is this? -->
+      <div class="card">
+        <div class="card-header">What is this system?</div>
+        <div class="card-body" style="font-size:.85rem;line-height:1.75;color:#444">
+          <p>This is a <strong>Manufacturing Execution System (MES) prototype</strong> that simulates how batches of sterile injectable medicine move through a pharmaceutical factory — from raw materials all the way to finished, approved product.</p>
+          <p style="margin-top:10px">It demonstrates five engineering concepts in one integrated system:</p>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;margin-top:12px">
+            <div style="background:#eaf4fb;border-radius:8px;padding:12px 14px;border:1px solid #aed6f1">
+              <div style="font-weight:700;font-size:.82rem;color:#1a5276;margin-bottom:4px">1 — Queueing Theory</div>
+              <div style="font-size:.78rem;color:#555">Mathematical prediction of how waiting lines form at each station (M/M/1, M/M/c, M/G/1 models)</div>
+            </div>
+            <div style="background:#eafaf1;border-radius:8px;padding:12px 14px;border:1px solid #a9dfbf">
+              <div style="font-weight:700;font-size:.82rem;color:#1e8449;margin-bottom:4px">2 &amp; 3 — Simulation &amp; Statistics</div>
+              <div style="font-size:.78rem;color:#555">SimPy discrete-event simulation, 15 replications, Welch warm-up, 95% confidence intervals, paired t-test</div>
+            </div>
+            <div style="background:#fef9e7;border-radius:8px;padding:12px 14px;border:1px solid #f9e79f">
+              <div style="font-weight:700;font-size:.82rem;color:#9a7d0a;margin-bottom:4px">4 — What-If Analysis</div>
+              <div style="font-size:.78rem;color:#555">Testing 5 scenarios (e.g. adding a 2nd filling machine, changing dispatch rules) before committing to real change</div>
+            </div>
+            <div style="background:#f5eef8;border-radius:8px;padding:12px 14px;border:1px solid #d7bde2">
+              <div style="font-weight:700;font-size:.82rem;color:#6c3483;margin-bottom:4px">5 — MES Integration</div>
+              <div style="font-size:.78rem;color:#555">PostgreSQL database, MRP explosion, EDD/SPT scheduling, PuLP optimisation, ISA-95 Level 3 data flow</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Two simulations -->
+      <div class="card">
+        <div class="card-header">The Two Types of Simulation</div>
+        <div class="card-body" style="font-size:.85rem;line-height:1.75;color:#444">
+          <p>There are two completely separate simulation engines in this project. Understanding the difference is the most important thing:</p>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:12px">
+            <div style="background:#eafaf1;border-radius:8px;padding:14px 16px;border:1px solid #a9dfbf">
+              <div style="font-weight:700;font-size:.88rem;color:#1e8449;margin-bottom:6px">🟢 Live Dashboard Simulation</div>
+              <ul style="margin:0;padding-left:16px;font-size:.8rem;line-height:1.8">
+                <li>Runs while the browser is open</li>
+                <li>Watch individual batches (coloured dots) move in real time</li>
+                <li>Controlled by ▶ Start / ⏸ Pause / ↺ Reset</li>
+                <li>Used for visualisation and testing dispatch rules live</li>
+                <li><em>Not used for statistical conclusions</em></li>
+              </ul>
+            </div>
+            <div style="background:#fef9e7;border-radius:8px;padding:14px 16px;border:1px solid #f9e79f">
+              <div style="font-weight:700;font-size:.88rem;color:#9a7d0a;margin-bottom:6px">📊 Statistical Simulation</div>
+              <ul style="margin:0;padding-left:16px;font-size:.8rem;line-height:1.8">
+                <li>Run once beforehand via <code>des_simulation.py</code></li>
+                <li>15 complete factory replications × 5 scenarios</li>
+                <li>Each replication = ~10 simulated days</li>
+                <li>Takes ~3 minutes; produces the 6 charts in <code>outputs/</code></li>
+                <li>Used for statistically reliable conclusions and CI</li>
+              </ul>
+            </div>
+          </div>
+          <p style="margin-top:12px;font-size:.8rem;background:#f4f6f8;border-radius:6px;padding:10px 14px">
+            <strong>Analogy:</strong> The statistical simulation is like running a lab experiment 15 times and averaging the results.
+            The live simulation is like a fishbowl you can watch.
+          </p>
+        </div>
+      </div>
+
+      <!-- Factory process -->
+      <div class="card">
+        <div class="card-header">The Factory Process — 9 Stations</div>
+        <div class="card-body" style="font-size:.85rem;line-height:1.75;color:#444">
+          <p>Every batch of injectable drug goes through these stations in order:</p>
+          <div style="overflow-x:auto;margin-top:10px">
+            <table style="width:100%;font-size:.8rem">
+              <thead><tr><th style="width:40px">Step</th><th>Station</th><th>What happens</th><th>Time</th></tr></thead>
+              <tbody>
+                <tr><td style="font-weight:700;color:#2980b9">①</td><td><strong>Raw Material Staging</strong></td><td>Incoming materials are logged and held</td><td>~30 min</td></tr>
+                <tr><td style="font-weight:700;color:#2980b9">②</td><td><strong>Quarantine Hold</strong></td><td>Materials tested and held pending results</td><td>120 min (fixed)</td></tr>
+                <tr><td style="font-weight:700;color:#2980b9">③</td><td><strong>Dispensing &amp; Weighing</strong></td><td>APIs and excipients weighed out precisely</td><td>~45 min</td></tr>
+                <tr><td style="font-weight:700;color:#2980b9">④</td><td><strong>Compounding / Solution Prep</strong></td><td>Drug dissolved and mixed with WFI water</td><td>~90 min</td></tr>
+                <tr><td style="font-weight:700;color:#2980b9">⑤</td><td><strong>Sterile Filtration</strong></td><td>Solution passed through 0.22 µm filter</td><td>~60 min</td></tr>
+                <tr style="background:#fdedec"><td style="font-weight:700;color:#e74c3c">⑥</td><td><strong>⚡ Aseptic Filling</strong></td><td>Solution filled into vials in cleanroom — <strong>BOTTLENECK</strong></td><td>~120 min</td></tr>
+                <tr><td style="font-weight:700;color:#2980b9">⑦</td><td><strong>Inspection &amp; Packaging</strong></td><td>Each vial visually inspected; cartons assembled</td><td>~45 min</td></tr>
+                <tr><td style="font-weight:700;color:#2980b9">⑧</td><td><strong>QA Release Hold</strong></td><td>Quality team reviews completed batch record</td><td>180 min (fixed)</td></tr>
+                <tr style="background:#eafaf1"><td style="font-weight:700;color:#27ae60">⑨</td><td><strong>Released ✓</strong></td><td>Batch approved for shipment</td><td>—</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p style="margin-top:10px;font-size:.79rem;color:#555">
+            <strong>Why is Filling the bottleneck?</strong> It has the longest processing time (120 min) relative to batch arrival rate (every 240 min avg). Utilisation = 50% — higher than every other station — so it builds up a queue first. Adding a 2nd filling machine cuts queue wait by 93% (M/M/2 analysis).
+          </p>
+        </div>
+      </div>
+
+      <!-- Tab guide -->
+      <div class="card">
+        <div class="card-header">Dashboard Pages — What Each Tab Does</div>
+        <div class="card-body" style="font-size:.85rem;color:#444">
+          <div style="display:flex;flex-direction:column;gap:16px">
+
+            <div style="display:flex;gap:14px;align-items:flex-start;padding-bottom:14px;border-bottom:1px solid #f0f2f5">
+              <div style="background:#2980b9;color:white;border-radius:8px;padding:6px 12px;
+                   font-weight:700;font-size:.82rem;flex-shrink:0;min-width:110px;text-align:center">Factory Floor</div>
+              <div style="line-height:1.7">
+                <strong>The live visualisation.</strong> Coloured dots (batch tokens) move through a diagram of the factory in real time.
+                Blue = Injectable-A, Green = Injectable-B, Orange = Injectable-C.
+                Station borders go <span style="color:#27ae60;font-weight:700">green</span> (idle), <span style="color:#e67e22;font-weight:700">orange</span> (busy), or <span style="color:#e74c3c;font-weight:700">red</span> (breakdown).
+                Below the floor: live WFI water quality and HVAC cleanroom charts.
+                <em>This page is the teaching/demo tool — use ▶ Start to begin.</em>
+              </div>
+            </div>
+
+            <div style="display:flex;gap:14px;align-items:flex-start;padding-bottom:14px;border-bottom:1px solid #f0f2f5">
+              <div style="background:#8e44ad;color:white;border-radius:8px;padding:6px 12px;
+                   font-weight:700;font-size:.82rem;flex-shrink:0;min-width:110px;text-align:center">Analytics</div>
+              <div style="line-height:1.7">
+                <strong>Live charts from the running simulation.</strong> Shows WIP over time, queue depth at the filling station,
+                station utilisation (from queueing math), and cumulative throughput.
+                Charts update as the live simulation runs — they will be flat until you press ▶ Start.
+                The <em>Station Utilisation</em> chart shows analytical values from queueing theory, not the live sim.
+              </div>
+            </div>
+
+            <div style="display:flex;gap:14px;align-items:flex-start;padding-bottom:14px;border-bottom:1px solid #f0f2f5">
+              <div style="background:#1a252f;color:white;border-radius:8px;padding:6px 12px;
+                   font-weight:700;font-size:.82rem;flex-shrink:0;min-width:110px;text-align:center">📊 Sim Results</div>
+              <div style="line-height:1.7">
+                <strong>The assignment answer sheet.</strong> Contains all five assignment parts:
+                queueing theory tables (Part 1), DES model parameters + Welch/CI/t-test results (Parts 2–3),
+                what-if scenario comparison from the database (Part 4), and the MES integration summary + ISA-95 flow (Part 5).
+                Charts are loaded from the <code>outputs/</code> folder — run the simulation first to populate them.
+              </div>
+            </div>
+
+            <div style="display:flex;gap:14px;align-items:flex-start;padding-bottom:14px;border-bottom:1px solid #f0f2f5">
+              <div style="background:#27ae60;color:white;border-radius:8px;padding:6px 12px;
+                   font-weight:700;font-size:.82rem;flex-shrink:0;min-width:110px;text-align:center">MRP / WO</div>
+              <div style="line-height:1.7">
+                <strong>Live database tables.</strong> Shows Work Orders (production jobs), MRP Planned Orders (materials to purchase
+                and when), and the EDD filling schedule. All data is read from the PostgreSQL database (Sheridan_573) in real time.
+                Use <strong>⚙ Run Analysis → MRP/Sched</strong> to regenerate these from scratch.
+              </div>
+            </div>
+
+            <div style="display:flex;gap:14px;align-items:flex-start;padding-bottom:14px;border-bottom:1px solid #f0f2f5">
+              <div style="background:#e67e22;color:white;border-radius:8px;padding:6px 12px;
+                   font-weight:700;font-size:.82rem;flex-shrink:0;min-width:110px;text-align:center">Events</div>
+              <div style="line-height:1.7">
+                <strong>System event log.</strong> A real-time log of everything happening in the live simulation:
+                batch arrivals, station starts and completions, machine breakdowns (ALARM), and batch releases.
+                Color-coded by severity: INFO (blue), WARNING (yellow), ALARM (red).
+              </div>
+            </div>
+
+            <div style="display:flex;gap:14px;align-items:flex-start">
+              <div style="background:#e74c3c;color:white;border-radius:8px;padding:6px 12px;
+                   font-weight:700;font-size:.82rem;flex-shrink:0;min-width:110px;text-align:center">❓ Guide</div>
+              <div style="line-height:1.7">
+                <strong>This page.</strong> Explains what everything means and how the pieces fit together.
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      <!-- Controls guide -->
+      <div class="card">
+        <div class="card-header">Controls Bar — What Each Button Does</div>
+        <div class="card-body" style="font-size:.85rem;color:#444">
+          <div style="overflow-x:auto">
+            <table style="font-size:.82rem">
+              <thead><tr><th>Control</th><th>What it does</th></tr></thead>
+              <tbody>
+                <tr><td><strong>▶ Start</strong></td><td>Begins the factory floor simulation. Batches start arriving and moving.</td></tr>
+                <tr><td><strong>⏸ Pause / ▶ Resume</strong></td><td>Freezes or unfreezes the simulation at any point.</td></tr>
+                <tr><td><strong>↺ Reset</strong></td><td>Clears everything and returns to a fresh empty factory. Does not auto-start.</td></tr>
+                <tr><td><strong>⚡ Finish Instantly</strong></td><td>Runs at maximum speed and auto-pauses once 30 batches are released. Good for seeing the full picture in seconds.</td></tr>
+                <tr><td><strong>Speed slider</strong></td><td>Controls how fast simulated time passes. At 30×, 30 simulated minutes pass every real second.</td></tr>
+                <tr><td><strong>Dispatch Rule</strong></td><td>How the factory picks which batch to process next when a machine becomes free (FIFO / SPT / EDD — see below).</td></tr>
+                <tr><td><strong>Filling Lines</strong></td><td>Number of parallel filling machines. Adding a 2nd cuts queue wait by 93% per the M/M/2 analysis.</td></tr>
+                <tr><td><strong>⚙ Run Analysis</strong></td><td>Opens a panel to re-run database setup, queueing calculations, the full DES simulation, or MRP scheduling without leaving the browser.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Dispatch rules -->
+      <div class="card">
+        <div class="card-header">Dispatch Rules</div>
+        <div class="card-body" style="font-size:.85rem;color:#444">
+          <p style="margin-bottom:10px">When multiple batches are waiting for a machine, the system needs a rule to decide which goes next:</p>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px">
+            <div style="background:#eaf4fb;border-radius:8px;padding:12px 14px;border:1px solid #aed6f1">
+              <div style="font-weight:700;font-size:.88rem;color:#1a5276">FIFO — First In, First Out</div>
+              <div style="font-size:.8rem;margin-top:4px;color:#555">Oldest waiting batch goes first. Simplest and fairest — no batch ever starves.</div>
+            </div>
+            <div style="background:#eafaf1;border-radius:8px;padding:12px 14px;border:1px solid #a9dfbf">
+              <div style="font-weight:700;font-size:.88rem;color:#1e8449">SPT — Shortest Processing Time</div>
+              <div style="font-size:.8rem;margin-top:4px;color:#555">Fastest-to-process batch goes first. Minimises average wait time. Our analysis found SPT gives ~7 min shorter flow time than FIFO (p = 0.04).</div>
+            </div>
+            <div style="background:#fef9e7;border-radius:8px;padding:12px 14px;border:1px solid #f9e79f">
+              <div style="font-weight:700;font-size:.88rem;color:#9a7d0a">EDD — Earliest Due Date</div>
+              <div style="font-size:.8rem;margin-top:4px;color:#555">Most urgent batch (closest deadline) goes first. Best for avoiding late orders — used in the MRP schedule.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Key metrics -->
+      <div class="card">
+        <div class="card-header">Key Metrics Explained</div>
+        <div class="card-body" style="font-size:.85rem;color:#444">
+          <div style="overflow-x:auto">
+            <table style="font-size:.82rem">
+              <thead><tr><th>Metric</th><th>What it means</th><th>Target</th></tr></thead>
+              <tbody>
+                <tr><td><strong>WIP Batches</strong></td><td>Batches currently inside the factory (Work-In-Progress)</td><td>Stable — not growing</td></tr>
+                <tr><td><strong>Released</strong></td><td>Batches fully completed and approved for shipment</td><td>Should grow steadily</td></tr>
+                <tr><td><strong>Avg Flow Time</strong></td><td>Time from raw material entry to QA release</td><td>~703 min baseline</td></tr>
+                <tr><td><strong>Filling Util %</strong></td><td>How busy the filling machine is on average</td><td>~50% theoretical</td></tr>
+                <tr><td><strong>Throughput/h</strong></td><td>Batches completed per hour</td><td>~0.21 batches/h</td></tr>
+                <tr><td><strong>Breakdowns</strong></td><td>Times the filling machine broke down (MTTF=480min, MTTR=30min)</td><td>Lower is better</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Files -->
+      <div class="card" style="margin-bottom:4px">
+        <div class="card-header">File Structure</div>
+        <div class="card-body" style="font-size:.85rem;color:#444">
+          <div style="overflow-x:auto">
+            <table style="font-size:.8rem">
+              <thead><tr><th>File</th><th>What it does</th></tr></thead>
+              <tbody>
+                <tr><td><code>RUN_PROJECT.py</code></td><td><strong>Start here.</strong> Single-file launcher — installs packages, sets up DB, runs analysis, opens browser</td></tr>
+                <tr><td><code>SETUP_AND_EXECUTION.md</code></td><td>Plain-language setup guide and execution instructions</td></tr>
+                <tr><td><code>src/db_setup.py</code></td><td>Creates the PostgreSQL database (Sheridan_573) tables and fills them with test data</td></tr>
+                <tr><td><code>src/queueing_analysis.py</code></td><td>Calculates queueing theory metrics (M/M/1, M/M/c, M/G/1, Little's Law)</td></tr>
+                <tr><td><code>src/des_simulation.py</code></td><td>Runs the SimPy statistical simulation (15 reps × 5 scenarios); produces 6 PNG charts</td></tr>
+                <tr><td><code>src/mrp_scheduler.py</code></td><td>MRP explosion, EDD/SPT scheduling, PuLP LP optimisation, dispatch queue</td></tr>
+                <tr><td><code>src/dashboard.py</code></td><td>Runs the web server and live factory simulation (this dashboard)</td></tr>
+                <tr><td><code>outputs/</code></td><td>6 PNG charts generated by the statistical simulation</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- max-width wrapper -->
+  </div><!-- tab-guide -->
+
+</div><!-- main -->
+
+<script>
+// ── Station pixel centers — must match SVG viewBox coordinates ────────────────
+// Row 1 (left→right): ①raw_material ②quarantine ③dispensing ④compounding ⑤filtration
+// Row 2 (right→left): ⑥filling ⑦inspection ⑧qa_hold ⑨released
+// Station center-x = x + width/2 = x + 81; Row1 y=108, Row2 y=300
+const STATION_POS = {
+  raw_material: {x:101,  y:108},
+  quarantine:   {x:341,  y:108},
+  dispensing:   {x:581,  y:108},
+  compounding:  {x:821,  y:108},
+  filtration:   {x:1061, y:108},
+  filling:      {x:1061, y:300},
+  inspection:   {x:821,  y:300},
+  qa_hold:      {x:581,  y:300},
+  released:     {x:341,  y:300},
+  arriving:     {x:-40,  y:108},
+  // Queue positions (where waiting tokens stack up)
+  q_raw_material: {x:15,   y:108},
+  q_quarantine:   {x:253,  y:108},
+  q_dispensing:   {x:493,  y:108},
+  q_compounding:  {x:733,  y:108},
+  q_filtration:   {x:973,  y:108},
+  q_filling:      {x:1165, y:195},  // stack above elbow area
+  q_inspection:   {x:910,  y:300},
+  q_qa_hold:      {x:670,  y:300},
+  q_released:     {x:430,  y:300},
+};
+
+// Stations in row 2 (right→left) — queue tokens stack RIGHT instead of left
+const ROW2_STATIONS = new Set(['filling','inspection','qa_hold','released',
+  'q_filling','q_inspection','q_qa_hold','q_released']);
+
+// ── Chart setup ───────────────────────────────────────────────────────────────
+const baseOpts = {
+  animation:false, responsive:true, maintainAspectRatio:false,
+  plugins:{legend:{display:false}},
+  scales:{x:{ticks:{maxTicksLimit:8,font:{size:10}}},
+          y:{beginAtZero:true,ticks:{font:{size:10}}}}
+};
+const makeLineChart = (id, label, color) => new Chart(
+  document.getElementById(id).getContext('2d'),
+  {type:'line', data:{labels:[],datasets:[{label,data:[],borderColor:color,
+    backgroundColor:color+'22',fill:true,borderWidth:2,pointRadius:0,tension:.3}]},
+   options:{...baseOpts}}
+);
+const wipChart  = makeLineChart('chart-wip',   'WIP Batches', '#3498db');
+const qChart    = makeLineChart('chart-queue', 'Queue at Filling', '#e74c3c');
+const tputChart = makeLineChart('chart-tput',  'Released', '#27ae60');
+
+// Utilization bar chart (analytical queueing theory values)
+new Chart(document.getElementById('chart-util').getContext('2d'), {
+  type:'bar',
+  data:{
+    labels:['Raw Matl','Quarantine','Dispensing','Compounding','Filtration','Filling','Inspection','QA Hold'],
+    datasets:[{
+      label:'Utilisation ρ (%)',
+      data:[12.5,5.2,18.75,37.5,25,50,18.75,4.2],
+      backgroundColor:['#27ae60','#27ae60','#27ae60','#f39c12','#27ae60','#e74c3c','#27ae60','#27ae60'],
+      borderRadius:4
+    }]
+  },
+  options:{...baseOpts,
+    scales:{...baseOpts.scales,
+      y:{beginAtZero:true,max:100,ticks:{callback:v=>v+'%',font:{size:10}}}}}
+});
+
+// ── Utility live mini-charts ─────────────────────────────────────────────────
+const miniOpts = {
+  animation:false, responsive:true, maintainAspectRatio:false,
+  plugins:{legend:{display:true,position:'top',labels:{boxWidth:10,font:{size:9},padding:6}}},
+  scales:{
+    x:{display:false},
+    y:{beginAtZero:false,ticks:{font:{size:9},maxTicksLimit:4}}
+  }
+};
+const wfiChart = new Chart(document.getElementById('chart-wfi').getContext('2d'), {
+  type:'line',
+  data:{labels:[],datasets:[
+    {label:'Conductivity µS/cm',data:[],borderColor:'#2980b9',backgroundColor:'#2980b911',
+     fill:true,borderWidth:1.5,pointRadius:0,tension:.4,yAxisID:'y'},
+    {label:'TOC ppb ÷100',data:[],borderColor:'#8e44ad',backgroundColor:'transparent',
+     fill:false,borderWidth:1.2,pointRadius:0,tension:.4,yAxisID:'y'}
+  ]},
+  options:{...miniOpts,scales:{
+    x:{display:false},
+    y:{beginAtZero:false,ticks:{font:{size:9},maxTicksLimit:4}}
+  }}
+});
+const hvacChart = new Chart(document.getElementById('chart-hvac').getContext('2d'), {
+  type:'line',
+  data:{labels:[],datasets:[
+    {label:'Temp °C',data:[],borderColor:'#e74c3c',backgroundColor:'#e74c3c11',
+     fill:true,borderWidth:1.5,pointRadius:0,tension:.4,yAxisID:'yTemp'},
+    {label:'Humidity %',data:[],borderColor:'#27ae60',backgroundColor:'transparent',
+     fill:false,borderWidth:1.2,pointRadius:0,tension:.4,yAxisID:'yHum'}
+  ]},
+  options:{...miniOpts,scales:{
+    x:{display:false},
+    yTemp:{beginAtZero:false,ticks:{font:{size:9},maxTicksLimit:4},position:'left'},
+    yHum: {beginAtZero:false,ticks:{font:{size:9},maxTicksLimit:4},position:'right',grid:{drawOnChartArea:false}}
+  }}
+});
+
+let wfiHistory=[], hvacHistory=[];
+function pushUtilHistory(wfi, hvac) {
+  const label = new Date().toLocaleTimeString('en',{hour12:false,hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  wfiHistory.push({label, cond:wfi.conductivity, toc:wfi.toc/100});
+  hvacHistory.push({label, temp:hvac.temp_c, hum:hvac.humidity_pct});
+  wfiHistory  = wfiHistory.slice(-120);
+  hvacHistory = hvacHistory.slice(-120);
+
+  wfiChart.data.labels = wfiHistory.map(d=>d.label);
+  wfiChart.data.datasets[0].data = wfiHistory.map(d=>d.cond);
+  wfiChart.data.datasets[1].data = wfiHistory.map(d=>d.toc);
+  wfiChart.update('none');
+
+  hvacChart.data.labels = hvacHistory.map(d=>d.label);
+  hvacChart.data.datasets[0].data = hvacHistory.map(d=>d.temp);
+  hvacChart.data.datasets[1].data = hvacHistory.map(d=>d.hum);
+  hvacChart.update('none');
+}
+
+// ── Token management ──────────────────────────────────────────────────────────
+const tokenEls = {};
+
+function updateTokens(batches) {
+  const layer  = document.getElementById('tokens-layer');
+  const svg    = document.getElementById('floor-svg');
+  const rect   = svg.getBoundingClientRect();
+  const svgW = 1200, svgH = 420;
+  const scaleX = (rect.width  || svgW) / svgW;
+  const scaleY = (rect.height || svgH) / svgH;
+
+  const seen = new Set();
+  const queueOff = {};   // tracks how many tokens are queued at each station
+
+  for (const [bid, info] of Object.entries(batches)) {
+    seen.add(bid);
+    let el = tokenEls[bid];
+    if (!el) {
+      el = document.createElement('div');
+      el.className = 'batch-token';
+      el.style.background = info.color || '#3498db';
+      el.textContent = bid.replace('B','');
+      layer.appendChild(el);
+      tokenEls[bid] = el;
+    }
+
+    const station = info.station || 'arriving';
+    let pos;
+
+    if (station.startsWith('q_')) {
+      const base = STATION_POS[station] || STATION_POS.arriving;
+      const n = queueOff[station] || 0;
+      queueOff[station] = n + 1;
+      // Row 2 queues stack to the right; row 1 queues stack to the left
+      const isRow2 = ROW2_STATIONS.has(station);
+      pos = {x: base.x + (isRow2 ? n*28 : -n*28), y: base.y};
+    } else {
+      pos = STATION_POS[station] || STATION_POS.arriving;
+    }
+
+    el.style.left  = (pos.x * scaleX) + 'px';
+    el.style.top   = (pos.y * scaleY) + 'px';
+    el.title = `${bid} | ${info.product||''} | ${station}`;
+    el.style.opacity = station === 'released' ? '0.4' : '1';
+  }
+
+  for (const bid of Object.keys(tokenEls)) {
+    if (!seen.has(bid)) {
+      const el = tokenEls[bid];
+      if (el && el.parentNode) el.parentNode.removeChild(el);
+      delete tokenEls[bid];
+    }
+  }
+}
+
+// ── Station border coloring ───────────────────────────────────────────────────
+function updateStationStatus(stations, isBreakdown) {
+  const stIds = ['raw_material','quarantine','dispensing','compounding','filtration',
+                 'filling','inspection','qa_hold','released'];
+  for (const s of stIds) {
+    const rect = document.getElementById('st-'+s);
+    const occ  = document.getElementById('occ-'+s);
+    if (!rect) continue;
+    const info = (stations||{})[s] || {};
+    const busy = info.occupant != null;
+    const q    = (info.queue||[]).length;
+
+    let stroke = '#27ae60', sw = '2.5';
+    if (s === 'filling' && isBreakdown) { stroke = '#c0392b'; sw = '4'; }
+    else if (busy)                       { stroke = '#f39c12'; sw = '3'; }
+    else if (s === 'filling')            { stroke = '#e74c3c'; sw = '3'; }
+    else if (s === 'quarantine' || s === 'qa_hold') { stroke = '#f39c12'; sw = '2'; }
+
+    rect.setAttribute('stroke', stroke);
+    rect.setAttribute('stroke-width', sw);
+
+    if (occ) {
+      occ.textContent = info.occupant
+        ? info.occupant + (q > 0 ? ` +${q} waiting` : '')
+        : (q > 0 ? `${q} waiting` : 'IDLE');
+      occ.setAttribute('fill', info.occupant ? '#e67e22' : '#888');
+    }
+  }
+  const qEl = document.getElementById('q-filling');
+  const fillInfo = (stations||{}).filling || {};
+  if (qEl) qEl.textContent = (fillInfo.queue||[]).length > 0
+    ? `${(fillInfo.queue||[]).length} in queue` : '';
+}
+
+// ── WFI / HVAC readout update ─────────────────────────────────────────────────
+function colorCls(s)  { return {Normal:'ok',WARNING:'warn',ALARM:'alarm'}[s]||'ok'; }
+function dotCls(s)    { return {Normal:'dot-ok',WARNING:'dot-warn',ALARM:'dot-alarm'}[s]||'dot-ok'; }
+function updateUtilities(wfi, hvac) {
+  if (!wfi || !hvac) return;
+  const wc = colorCls(wfi.status);
+  document.getElementById('wfi-cond').className='util-val '+wc;
+  document.getElementById('wfi-cond').textContent = wfi.conductivity.toFixed(2)+' µS/cm';
+  document.getElementById('wfi-temp').textContent = wfi.temperature.toFixed(1)+' °C';
+  document.getElementById('wfi-toc').textContent  = Math.round(wfi.toc)+' ppb';
+  document.getElementById('wfi-status').className='util-val '+wc;
+  document.getElementById('wfi-status').textContent = wfi.status;
+  document.getElementById('wfi-dot').className = 'status-dot '+dotCls(wfi.status);
+  document.getElementById('badge-wfi').textContent = 'WFI: '+wfi.status;
+  document.getElementById('badge-wfi').className = 'badge '+(wfi.status!='Normal'?'alarm':'ok');
+
+  const hc = colorCls(hvac.status);
+  const tOk = hvac.temp_c>=20 && hvac.temp_c<=24;
+  const hOk = hvac.humidity_pct>=35 && hvac.humidity_pct<=55;
+  const pOk = hvac.particles<=3520;
+  document.getElementById('hvac-temp').className='util-val '+(tOk?'ok':'alarm');
+  document.getElementById('hvac-temp').textContent = hvac.temp_c.toFixed(1)+' °C';
+  document.getElementById('hvac-hum').className='util-val '+(hOk?'ok':'warn');
+  document.getElementById('hvac-hum').textContent = hvac.humidity_pct.toFixed(1)+' %';
+  document.getElementById('hvac-part').className='util-val '+(pOk?'ok':'alarm');
+  document.getElementById('hvac-part').textContent = hvac.particles+' /m³';
+  document.getElementById('hvac-status').className='util-val '+hc;
+  document.getElementById('hvac-status').textContent = hvac.status;
+  document.getElementById('hvac-dot').className = 'status-dot '+dotCls(hvac.status);
+  document.getElementById('badge-hvac').textContent = 'HVAC: '+hvac.status;
+  document.getElementById('badge-hvac').className = 'badge '+(hvac.status!='Normal'?'warn':'ok');
+
+  pushUtilHistory(wfi, hvac);
+}
+
+// ── Chart update ──────────────────────────────────────────────────────────────
+let tputHistory = [];
+function updateCharts(state) {
+  const wip = state.wip_history || [];
+  const q   = state.q_fill_history || [];
+  wipChart.data.labels = wip.map(p=>p[0]+'h');
+  wipChart.data.datasets[0].data = wip.map(p=>p[1]);
+  wipChart.update('none');
+  qChart.data.labels = q.map(p=>p[0]+'h');
+  qChart.data.datasets[0].data = q.map(p=>p[1]);
+  qChart.update('none');
+  const n = state.metrics?.n_released||0;
+  const t = (state.sim_time||0)/60;
+  if (n>0 && t>0) {
+    tputHistory.push([Math.round(t*10)/10, n]);
+    tputHistory = tputHistory.slice(-300);
+    tputChart.data.labels = tputHistory.map(p=>p[0]+'h');
+    tputChart.data.datasets[0].data = tputHistory.map(p=>p[1]);
+    tputChart.update('none');
+  }
+}
+
+// ── Events panel ──────────────────────────────────────────────────────────────
+let lastEventCount = 0;
+function updateEvents(events) {
+  const log = document.getElementById('event-log');
+  const alarms = (events||[]).filter(e=>e.level==='ALARM').length;
+  document.getElementById('alarm-count').textContent = alarms+' alarm'+(alarms!==1?'s':'');
+  if ((events||[]).length === lastEventCount) return;
+  lastEventCount = (events||[]).length;
+  log.innerHTML = (events||[]).map(e=>`
+    <div class="event-row">
+      <span class="ev-ts">${e.ts}</span>
+      <span class="ev-badge ev-${e.level}">${e.level}</span>
+      <span class="ev-msg">${e.message}</span>
+    </div>`).join('');
+}
+
+// ── State poll ────────────────────────────────────────────────────────────────
+let simRunning = false;
+async function pollState() {
+  try {
+    const r = await fetch('/api/state');
+    if (!r.ok) return;
+    const s = await r.json();
+
+    simRunning = s.running === true;
+
+    // Show/hide idle overlay
+    const overlay = document.getElementById('idle-overlay');
+    if (simRunning) overlay.classList.add('hidden');
+    else overlay.classList.remove('hidden');
+
+    // Floor status badge
+    const fs = document.getElementById('floor-status');
+    if (!simRunning)         { fs.textContent = '● Waiting to Start'; fs.style.color='#f39c12'; }
+    else if (s.paused)       { fs.textContent = '⏸ Paused';           fs.style.color='#f39c12'; }
+    else                     { fs.textContent = '● Live';             fs.style.color='#2ecc71'; }
+
+    // Button states
+    document.getElementById('btn-start').disabled = simRunning && !s.paused;
+    document.getElementById('btn-pause').disabled = !simRunning;
+    document.getElementById('btn-warp').disabled  = !simRunning;
+
+    // Top badges
+    const t = Math.round(s.sim_time||0);
+    const h = Math.floor(t/60), m = t%60;
+    document.getElementById('badge-simtime').textContent = `t = ${h}h ${m}m`;
+    document.getElementById('badge-released').textContent = (s.metrics?.n_released||0)+' released';
+    document.getElementById('badge-wip').textContent = 'WIP: '+(s.metrics?.wip||0);
+
+    // Metric strip
+    document.getElementById('m-wip').textContent = s.metrics?.wip||0;
+    document.getElementById('m-released').textContent = s.metrics?.n_released||0;
+    const flow = s.metrics?.avg_flow_min;
+    document.getElementById('m-flow').textContent = flow ? (flow/60).toFixed(1)+' h' : '—';
+    document.getElementById('m-util').textContent = s.metrics?.util_filling
+      ? s.metrics.util_filling.toFixed(1)+'%' : '—';
+    document.getElementById('m-tput').textContent = s.metrics?.throughput
+      ? s.metrics.throughput.toFixed(3) : '—';
+    document.getElementById('m-breaks').textContent = s.metrics?.n_breakdowns||0;
+
+    // Factory floor
+    const isBreak = (s.events||[]).slice(0,3).some(e=>e.message?.includes('breakdown'));
+    updateStationStatus(s.stations, isBreak);
+    updateTokens(s.batches||{});
+    updateUtilities(s.wfi, s.hvac);
+    updateCharts(s);
+    updateEvents(s.events);
+
+  } catch(e) { /* server not ready */ }
+}
+
+// ── Tab switching ─────────────────────────────────────────────────────────────
+function showTab(name, btn) {
+  document.querySelectorAll('.tab-content').forEach(el=>el.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  if (name==='mrp')     loadMRP();
+  if (name==='results') loadSimResults();
+}
+
+// ── Sim results loader ────────────────────────────────────────────────────────
+const SCENARIO_LABELS = {
+  'baseline':         'Baseline (FIFO, 1 machine)',
+  '2nd_filling_mach': '2nd Filling Machine',
+  'low_variability':  'Low Variability (CV × 0.5)',
+  'SPT':              'SPT Dispatching',
+  'EDD':              'EDD Dispatching',
+};
+
+async function loadSimResults() {
+  const data = await fetch('/api/sim_results').then(r=>r.json());
+  const tbody = document.getElementById('scenario-tbody');
+  const status = document.getElementById('sim-results-status');
+
+  if (!data.has_data || !data.scenarios.length) {
+    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:#888;padding:20px">
+      No simulation data yet — click <strong>⚙ Run Analysis → Simulation</strong> to run (~3 min).
+    </td></tr>`;
+    if (status) status.textContent = 'No data';
+    return;
+  }
+
+  if (status) status.textContent = `${data.scenarios.length} scenarios loaded from database`;
+
+  // Find baseline for comparison
+  const base = data.scenarios.find(s=>s.scenario==='baseline');
+  const baseFlow = base ? parseFloat(base.mean_flow) : null;
+
+  tbody.innerHTML = data.scenarios.map(s => {
+    const flow = parseFloat(s.mean_flow);
+    const isBest = s.scenario !== 'baseline' && baseFlow && flow < baseFlow;
+    const rowCls = s.scenario === 'baseline' ? '' : (isBest ? 'best-row' : '');
+    const diff   = baseFlow ? ((flow - baseFlow) / baseFlow * 100).toFixed(1) : '';
+    const diffStr = s.scenario === 'baseline' ? '—' :
+      (diff > 0 ? `<span style="color:#e74c3c">+${diff}%</span>` :
+                  `<span style="color:#27ae60">${diff}%</span>`);
+    const label  = SCENARIO_LABELS[s.scenario] || s.scenario;
+    return `<tr class="${rowCls}">
+      <td><strong>${label}</strong></td>
+      <td>${s.dispatch_rule}</td>
+      <td>${s.mean_flow} min ${diffStr}</td>
+      <td>[${s.ci_low}, ${s.ci_high}]</td>
+      <td>${s.mean_wip}</td>
+      <td>${s.mean_util}%</td>
+      <td>${s.mean_q}</td>
+      <td>${s.n_reps}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ── DB data load ──────────────────────────────────────────────────────────────
+async function loadMRP() {
+  const wos = await fetch('/api/work_orders').then(r=>r.json());
+  const pMap = {INJ_A:'Injectable-A',INJ_B:'Injectable-B',INJ_C:'Injectable-C'};
+  document.getElementById('wo-tbody').innerHTML = wos.map(w=>{
+    const p = pMap[w.product_id]||w.product_id;
+    const s=w.status, cls=s==='released'?'pill-ok':s==='pending'?'pill-warn':'pill-info';
+    return `<tr><td>${w.wo_id}</td><td>${p}</td><td>${(w.quantity||0).toLocaleString()}</td>
+      <td>${w.due_date||''}</td><td>${w.priority||''}</td>
+      <td><span class="pill ${cls}">${s}</span></td></tr>`;
+  }).join('');
+
+  const mrp = await fetch('/api/mrp').then(r=>r.json());
+  document.getElementById('mrp-tbody').innerHTML = mrp.length
+    ? mrp.map(m=>{
+        const st=m.status, cls=st==='past_due'?'pill-alarm':st==='optimized'?'pill-ok':'pill-info';
+        return `<tr><td>${m.item_id}</td><td>${m.period_week}</td>
+          <td>${m.release_week}</td><td>${parseFloat(m.quantity).toFixed(1)}</td>
+          <td><span class="pill ${cls}">${st}</span></td></tr>`;
+      }).join('')
+    : '<tr><td colspan="5" style="text-align:center;color:#888;padding:12px">No planned orders — run MRP first</td></tr>';
+
+  const sched = await fetch('/api/schedule').then(r=>r.json());
+  document.getElementById('sched-tbody').innerHTML = sched.length
+    ? sched.map(s=>`<tr><td>${s.wo_id}</td><td>${s.work_center}</td>
+        <td><span class="pill pill-info">${s.algorithm}</span></td>
+        <td>${s.planned_start||''}</td><td>${s.planned_end||''}</td>
+        <td><span class="pill pill-gray">${s.status}</span></td></tr>`).join('')
+    : '<tr><td colspan="6" style="text-align:center;color:#888;padding:12px">No schedule data</td></tr>';
+}
+
+// ── Controls ──────────────────────────────────────────────────────────────────
+async function ctrlCmd(cmd) {
+  const payload = {cmd};
+  if (cmd==='pause') {
+    const btn = document.getElementById('btn-pause');
+    if (btn.textContent.includes('Pause')) { payload.cmd='pause'; btn.textContent='▶ Resume'; }
+    else                                   { payload.cmd='resume'; btn.textContent='⏸ Pause'; }
+  }
+  if (cmd==='reset') { document.getElementById('btn-pause').textContent='⏸ Pause'; }
+  await fetch('/api/control',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify(payload)});
+}
+async function setSpeed(v) {
+  document.getElementById('speed-val').textContent=v+'×';
+  await fetch('/api/control',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({cmd:'set_speed',speed:parseInt(v)})});
+}
+async function setRule(v) {
+  await fetch('/api/control',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({cmd:'set_rule',rule:v})});
+}
+async function setFilling(v) {
+  await fetch('/api/control',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({cmd:'set_filling',n:parseInt(v)})});
+}
+
+// ── Analysis Modal ─────────────────────────────────────────────────────────────
+const ANALYSIS_STEPS = [
+  {id:'db_setup',   label:'DB Setup',    desc:'Reset & re-seed the Sheridan_573 PostgreSQL database (products, work orders, inventory)'},
+  {id:'queueing',   label:'Queueing',    desc:'Compute M/M/1, M/M/c, M/G/1 queueing metrics and Little\'s Law for all stations'},
+  {id:'simulation', label:'Simulation',  desc:'Run 15 replications × 5 scenarios in SimPy — statistical analysis (~3 min)'},
+  {id:'mrp',        label:'MRP / Sched', desc:'Explode the Bill of Materials, run EDD/SPT scheduling, optimise with PuLP, build dispatch queue'},
+];
+let _analysisPoller = null;
+
+function openAnalysisModal() {
+  renderAnalysisModal(null);
+  document.getElementById('analysis-modal').classList.add('open');
+}
+function closeAnalysisModal() {
+  document.getElementById('analysis-modal').classList.remove('open');
+  if (_analysisPoller) { clearInterval(_analysisPoller); _analysisPoller=null; }
+}
+function renderAnalysisModal(status) {
+  const stepsHtml = ANALYSIS_STEPS.map(s=>{
+    let cls='', icon='';
+    if (status) {
+      const logStr = (status.log||[]).join(' ');
+      const isDone  = status.done || logStr.includes('✓ Done: '+s.id);
+      const isActive= status.step===s.id;
+      const isError = status.error && status.step===s.id;
+      if (isError)  { cls='error'; icon='✕'; }
+      else if (isDone)  { cls='done';  icon='✓'; }
+      else if (isActive){ cls='active';icon='▶'; }
+    }
+    return `<div class="analysis-step-row">
+      <div class="step-check ${cls}">${icon}</div>
+      <div class="step-label">${s.label}</div>
+      <div class="step-desc">${s.desc}</div>
+    </div>`;
+  }).join('');
+  const pct  = status?status.progress:0;
+  const log  = status?(status.log||[]).slice(-40).join('\n'):'';
+  const busy = status&&status.running;
+  const done = status&&status.done;
+  const err  = status&&status.error?`<div style="color:#e74c3c;font-size:.8rem;margin-top:6px">Error: ${status.error}</div>`:'';
+
+  document.getElementById('analysis-modal').innerHTML = `
+  <div class="modal-box">
+    <div class="modal-header">
+      <h3>⚙ Run Analysis Modules</h3>
+      <button class="modal-close" onclick="closeAnalysisModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:.82rem;color:#555;margin:0 0 12px">
+        Select steps to run. Results write to the database and refresh the MRP/WO tab.
+        <strong>Note:</strong> The Simulation step takes ~3 minutes.
+      </p>
+      <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:14px">
+        ${ANALYSIS_STEPS.map(s=>`<label style="font-size:.82rem;display:flex;align-items:center;gap:5px;cursor:pointer">
+          <input type="checkbox" class="step-cb" value="${s.id}" ${s.id!=='simulation'?'checked':''}> ${s.label}
+        </label>`).join('')}
+      </div>
+      ${stepsHtml}
+      <div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:${pct}%"></div></div>
+      ${err}
+      ${log?`<div class="log-panel" id="analysis-log">${log.split('\n').map(l=>`<div>${l}</div>`).join('')}</div>`:''}
+    </div>
+    <div class="modal-footer">
+      <span style="font-size:.8rem;color:#888;flex:1">${done?(status.error?'Completed with errors.':'✓ All steps complete!')
+        :busy?'Running…':'Ready'}</span>
+      <button class="ctrl-btn" style="background:#95a5a6;color:white" onclick="closeAnalysisModal()">Close</button>
+      <button class="ctrl-btn btn-start" ${busy?'disabled':''} onclick="startAnalysis()">▶ Run</button>
+    </div>
+  </div>`;
+  if (log) { const lp=document.getElementById('analysis-log'); if(lp) lp.scrollTop=lp.scrollHeight; }
+}
+async function startAnalysis() {
+  const steps = Array.from(document.querySelectorAll('.step-cb:checked')).map(c=>c.value);
+  if (!steps.length) { alert('Select at least one step.'); return; }
+  await fetch('/api/run_analysis',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({steps})});
+  if (_analysisPoller) clearInterval(_analysisPoller);
+  _analysisPoller = setInterval(async()=>{
+    const status = await fetch('/api/analysis_status').then(r=>r.json());
+    renderAnalysisModal(status);
+    if (status.done) { clearInterval(_analysisPoller); _analysisPoller=null; setTimeout(loadMRP,1000); }
+  }, 800);
+}
+
+// ── Boot ──────────────────────────────────────────────────────────────────────
+setInterval(pollState, 350);
+setTimeout(loadMRP, 1500);
+</script>
+
+<!-- Analysis Modal Overlay -->
+<div class="modal-overlay" id="analysis-modal"></div>
+
+</body>
+</html>

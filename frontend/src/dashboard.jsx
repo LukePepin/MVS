@@ -77,28 +77,43 @@ const Dashboard = () => {
               <p className="mt-1 text-sm text-slate-400 font-medium">Decentralized MES & Kinematic Anomaly Simulator</p>
             </div>
 
-            <div className="inline-flex rounded-lg border border-blue-900/70 bg-gray-900 p-1">
+            <div className="flex flex-col gap-2 md:flex-row md:items-center">
+              <div className="inline-flex rounded-lg border border-blue-900/70 bg-gray-900 p-1">
+                <button
+                  type="button"
+                  onClick={() => setMode("hybrid")}
+                  className={`rounded-md px-3 py-1.5 text-sm font-medium transition ${
+                    mode === "hybrid"
+                      ? "bg-blue-500/20 text-blue-200 ring-1 ring-blue-500/50"
+                      : "text-slate-300 hover:text-blue-200"
+                  }`}
+                >
+                  Hybrid Live Mode
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMode("mock")}
+                  className={`rounded-md px-3 py-1.5 text-sm font-medium transition ${
+                    mode === "mock"
+                      ? "bg-blue-500/20 text-blue-200 ring-1 ring-blue-500/50"
+                      : "text-slate-300 hover:text-blue-200"
+                  }`}
+                >
+                  Mock Testbed Mode
+                </button>
+              </div>
               <button
-                type="button"
-                onClick={() => setMode("hybrid")}
-                className={`rounded-md px-3 py-1.5 text-sm font-medium transition ${
-                  mode === "hybrid"
-                    ? "bg-blue-500/20 text-blue-200 ring-1 ring-blue-500/50"
-                    : "text-slate-300 hover:text-blue-200"
-                }`}
+                onClick={async () => {
+                  try {
+                    await fetch("http://localhost:8000/api/start", { method: "POST" });
+                    alert("MES Execution Started! (Headless Simulation Running)");
+                  } catch (e) {
+                    console.error("Start failed", e);
+                  }
+                }}
+                className="rounded-lg border border-green-500 bg-green-600 px-4 py-2 text-sm font-bold text-white shadow-lg transition-colors hover:bg-green-500"
               >
-                Hybrid Live Mode
-              </button>
-              <button
-                type="button"
-                onClick={() => setMode("mock")}
-                className={`rounded-md px-3 py-1.5 text-sm font-medium transition ${
-                  mode === "mock"
-                    ? "bg-blue-500/20 text-blue-200 ring-1 ring-blue-500/50"
-                    : "text-slate-300 hover:text-blue-200"
-                }`}
-              >
-                Mock Testbed Mode
+                ▶ START EXECUTION
               </button>
             </div>
           </div>
