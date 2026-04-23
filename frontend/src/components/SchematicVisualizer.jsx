@@ -15,7 +15,21 @@ const typeStyles = {
   output: "bg-[#a3d9a5] border-2 border-[#1d4f20] text-[#1d4f20] rounded-xl flex items-center justify-center font-bold shadow-md"
 };
 
-const SchematicVisualizer = ({ schematic, machineStatus, selectedRoute, selectedStepIndex, bottleneckNode }) => {
+const STATION_TO_NODE = {
+  R0: "r0",
+  M1: "cncm",
+  M2: "lz",
+  M3: "cncl",
+  R1: "r6",
+};
+
+const normalizeStationToNode = (station) => {
+  if (!station) return null;
+  if (STATION_TO_NODE[station]) return STATION_TO_NODE[station];
+  return String(station).toLowerCase();
+};
+
+const SchematicVisualizer = ({ schematic, machineStatus, selectedRoute, selectedStepIndex, bottleneckNode, simTokens }) => {
   const nodes = schematic?.nodes?.length ? schematic.nodes : fallbackNodes;
   const connectors = schematic?.connectors?.length ? schematic.connectors : fallbackConnectors;
 
@@ -65,6 +79,17 @@ const SchematicVisualizer = ({ schematic, machineStatus, selectedRoute, selected
     return new Set(selectedRoute.slice(Math.max(0, startIndex)));
   }, [selectedRoute, selectedStepIndex]);
 
+  const nodePartCounts = useMemo(() => {
+    const counts = new Map();
+    for (const token of simTokens || []) {
+      const station = token.current_station || token.current_node;
+      const nodeId = normalizeStationToNode(station);
+      if (!nodeId) continue;
+      counts.set(nodeId, (counts.get(nodeId) || 0) + 1);
+    }
+    return counts;
+  }, [simTokens]);
+
   return (
     <section className="rounded-xl glass-panel p-5">
       <div className="mb-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
@@ -84,25 +109,26 @@ const SchematicVisualizer = ({ schematic, machineStatus, selectedRoute, selected
             {/* Blueprint Grid */}
             <div className="absolute inset-0 bg-[linear-gradient(to_right,#1e293b_1px,transparent_1px),linear-gradient(to_bottom,#1e293b_1px,transparent_1px)] bg-[size:40px_40px] opacity-20"></div>
 
-            {/* Connecting Edges and Active WIP Animations */}
+          {/* Connecting Edges with usage-based highlighting */}
             <svg className="pointer-events-none absolute inset-0 h-full w-full opacity-60">
                 {edgeLines.map((edge) => (
                 <React.Fragment key={`edge-group-${edge.from}-${edge.to}`}>
+              {(() => {
+                const fromCount = nodePartCounts.get(edge.from) || 0;
+                const toCount = nodePartCounts.get(edge.to) || 0;
+                const edgeInUse = Boolean(edge.active) || fromCount > 0 || toCount > 0;
+                return (
                     <line
                         x1={`${edge.x1}%`}
                         y1={`${edge.y1}%`}
                         x2={`${edge.x2}%`}
                         y2={`${edge.y2}%`}
-                      className={pathEdges.has(`${edge.from}|${edge.to}`) ? "stroke-blue-200" : "stroke-slate-500"}
-                      strokeWidth={pathEdges.has(`${edge.from}|${edge.to}`) ? "3" : "2"}
+                className={edgeInUse || pathEdges.has(`${edge.from}|${edge.to}`) ? "stroke-emerald-300" : "stroke-slate-700"}
+                strokeWidth={edgeInUse || pathEdges.has(`${edge.from}|${edge.to}`) ? "3" : "2"}
                         strokeDasharray="4 4"
                     />
-                    {edge.active && (
-                        <circle r="6" className="fill-blue-300 drop-shadow-[0_0_8px_rgba(147,197,253,0.9)]">
-                        <animate attributeName="cx" values={`${edge.x1}%;${edge.x2}%`} dur="3.6s" repeatCount="indefinite" />
-                        <animate attributeName="cy" values={`${edge.y1}%;${edge.y2}%`} dur="3.6s" repeatCount="indefinite" />
-                        </circle>
-                    )}
+                );
+              })()}
                 </React.Fragment>
                 ))}
             </svg>
@@ -113,6 +139,8 @@ const SchematicVisualizer = ({ schematic, machineStatus, selectedRoute, selected
                 const heightPx = (node.h || 10) * SCALE;
                 const baseClass = typeStyles[node.type] || typeStyles.machine;
                 const isPathNode = pathNodes.has(node.id);
+                const partCount = nodePartCounts.get(node.id) || 0;
+                const nodeInUse = partCount > 0 || node.active_jobs > 0;
                 
                 // Dim nodes that are offline or error
                 const opacityAttr = (node.status === "Offline" || node.status === "Blocked" || node.status === "Disconnected")
@@ -135,7 +163,9 @@ const SchematicVisualizer = ({ schematic, machineStatus, selectedRoute, selected
                         }}
                         title={`${node.label} (${node.status})`}
                     >
-                        <div className={`w-full h-full ${baseClass} ${bottleneckClass} ${isPathNode ? "ring-2 ring-blue-200/70" : ""}`}>
+                        <div
+                          className={`w-full h-full ${baseClass} ${bottleneckClass} ${isPathNode ? "ring-2 ring-blue-200/70" : ""} ${nodeInUse ? "ring-4 ring-emerald-300/90 shadow-[0_0_35px_rgba(16,185,129,0.8)] brightness-125" : ""}`}
+                        >
                             {/* Counter-rotate label so text remains horizontally legible if conveyor is tilted */}
                             <span 
                                 className="block text-center whitespace-pre-wrap leading-tight text-[11px]" 
@@ -145,10 +175,10 @@ const SchematicVisualizer = ({ schematic, machineStatus, selectedRoute, selected
                             </span>
                         </div>
 
-                        {/* Active jobs badge rendered specifically if active. Conveyors show no badges natively unless requested */}
-                        {node.active_jobs > 0 && node.type !== "conveyor" && (
-                            <div className="absolute -right-2 -top-2 flex h-5 min-w-5 items-center justify-center rounded-full bg-blue-500 text-[10px] font-bold text-white shadow-[0_0_8px_rgba(59,130,246,0.6)] animate-pulse border border-blue-200">
-                                {node.active_jobs}
+                        {/* Compact parts-count indicator above active nodes */}
+                        {partCount > 0 && (
+                          <div className="absolute left-1/2 -translate-x-1/2 -top-3 flex h-5 min-w-5 items-center justify-center rounded-full bg-emerald-500 text-[10px] font-bold text-white shadow-[0_0_8px_rgba(16,185,129,0.7)] border border-emerald-200">
+                            {partCount}
                             </div>
                         )}
 

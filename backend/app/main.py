@@ -110,9 +110,18 @@ class DILSettingsRequest(BaseModel):
     packet_loss: float = 0.0
     latency: float = 0.0
     jitter: float = 0.0
+    spoofed_node: str | None = None
+    bandwidth_kbps: float = 0.0
+    trust_override: float | None = None
+    isolated_nodes: list[str] = []
 
 class RoutingSettingsRequest(BaseModel):
     algorithm: str
+
+
+class StartSimulationRequest(BaseModel):
+    algorithm: str | None = None
+    num_jobs: int = 50
 
 
 app = FastAPI(title="MVS (Minimum Viable Spring)", version="0.1.0")
@@ -470,12 +479,57 @@ async def reset_mock_engine() -> dict[str, Any]:
     app.state.mock_engine.reset()
     return {"status": "ok", "message": "mock engine reset"}
 
-@app.post("/api/start")
-async def start_mes_execution() -> dict[str, Any]:
-    from backend.simulation.des_engine import run_headless_simulation
-    # Dispatch simulation dynamically
-    asyncio.create_task(run_headless_simulation(50))
-    return {"status": "started", "message": "MES Execution Pipeline Activated"}
+@app.post("/api/sim/start")
+async def start_simulation_endpoint(request: StartSimulationRequest | None = None) -> dict[str, Any]:
+    from backend.simulation.des_engine import start_simulation
+
+    payload = request or StartSimulationRequest()
+    default_algorithm = getattr(app.state.mock_engine, "routing_algorithm", "EDD")
+    algorithm = (payload.algorithm or default_algorithm).upper()
+    if algorithm not in ["EDD", "SPT", "FIFO", "LPT", "WSPT", "CR"]:
+        algorithm = default_algorithm
+
+    result = start_simulation(
+        num_jobs=max(50, min(1000, payload.num_jobs)),
+        algorithm=algorithm,
+    )
+    return result
+
+@app.post("/api/sim/pause")
+async def pause_simulation_endpoint() -> dict[str, Any]:
+    from backend.simulation.des_engine import pause_simulation
+    return pause_simulation()
+
+@app.post("/api/sim/resume")
+async def resume_simulation_endpoint() -> dict[str, Any]:
+    from backend.simulation.des_engine import resume_simulation
+    return resume_simulation()
+
+@app.post("/api/sim/speed")
+async def set_speed_endpoint() -> dict[str, Any]:
+    from backend.simulation.des_engine import set_speed
+    # Read speed from query param
+    return set_speed(5.0)
+
+@app.post("/api/sim/speed/{multiplier}")
+async def set_speed_value_endpoint(multiplier: float) -> dict[str, Any]:
+    from backend.simulation.des_engine import set_speed
+    return set_speed(multiplier)
+
+@app.post("/api/sim/finish")
+async def finish_instantly_endpoint() -> dict[str, Any]:
+    from backend.simulation.des_engine import finish_instantly
+    return finish_instantly()
+
+@app.post("/api/sim/reset")
+async def reset_simulation_endpoint() -> dict[str, Any]:
+    from backend.simulation.des_engine import reset_simulation
+    return reset_simulation()
+
+@app.get("/api/sim/state")
+async def get_simulation_state() -> dict[str, Any]:
+    from backend.simulation.des_engine import get_sim_state
+    return get_sim_state().snapshot()
 
 
 @app.post("/settings/dil")
@@ -485,6 +539,10 @@ async def update_dil_settings(settings: DILSettingsRequest) -> dict[str, Any]:
         "packet_loss": settings.packet_loss,
         "latency": settings.latency,
         "jitter": settings.jitter,
+        "spoofed_node": settings.spoofed_node,
+        "bandwidth_kbps": settings.bandwidth_kbps,
+        "trust_override": settings.trust_override,
+        "isolated_nodes": settings.isolated_nodes,
     }
     return {"status": "ok"}
 

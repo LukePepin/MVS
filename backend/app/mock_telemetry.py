@@ -28,8 +28,18 @@ class MockTelemetryEngine:
     def __init__(self) -> None:
         self._lock = asyncio.Lock()
         self.routing_algorithm = "SPT"
-        self.dil_config = {"r6_offline": False, "packet_loss": 0, "latency": 0, "jitter": 0}
+        self.dil_config = {
+            "r6_offline": False,
+            "packet_loss": 0,
+            "latency": 0,
+            "jitter": 0,
+            "spoofed_node": None,
+            "bandwidth_kbps": 0.0,
+            "trust_override": None,
+            "isolated_nodes": [],
+        }
         self._pending_lot_events = []
+        self._pending_genealogy = []
         self._rng = random.Random(573)
         self._tick = 0
         self._sequence = 1000
@@ -135,6 +145,10 @@ class MockTelemetryEngine:
             for job in self._jobs:
                 await session.merge(WorkOrders(order_id=job.job_id, requesting_unit=job.requesting_unit, due_date=datetime.fromisoformat(job.due_date_iso), status=job.status))
 
+            for gen in self._pending_genealogy:
+                await session.merge(Genealogy(serial_id=gen[0], work_order_id=gen[1], gcode_hash=gen[2], inspection_result=gen[3]))
+            self._pending_genealogy.clear()
+
             for ev in self._pending_lot_events:
                 # We mock serial_id with job_id string
                 session.add(LotEvents(serial_id=ev[0], station_point=ev[1], status=ev[2], timestamp=ev[3]))
@@ -173,11 +187,15 @@ class MockTelemetryEngine:
         elif self._rng.random() < 0.025:
             self._status_overrides["r5"] = "Blocked"
 
-        if self.dil_config.get("r6_offline"):
+        if self.dil_config.get("r6_offline") or "r6" in self.dil_config.get("isolated_nodes", []):
             self._status_overrides["r6"] = "Offline"
         else:
             if "r6" in self._status_overrides:
                 del self._status_overrides["r6"]
+
+        for node_id in self.dil_config.get("isolated_nodes", []):
+            if node_id != "r6": # r6 already handled
+                self._status_overrides[node_id] = "Offline"
 
         if self._status_overrides.get("qia", "") == "Offline":
             if self._rng.random() < 0.25:
@@ -217,6 +235,7 @@ class MockTelemetryEngine:
             total_processing_time=total_time,
         )
         self._jobs.append(job)
+        self._pending_genealogy.append((job.job_id, job.job_id, f"sha256:{self._rng.getrandbits(256):x}", "Pending"))
         self._pending_lot_events.append((job.job_id, route[0], 'Entered', datetime.now(timezone.utc)))
 
     def _dispatch_jobs(self, tick_s: float) -> None:
