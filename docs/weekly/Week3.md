@@ -10,11 +10,11 @@ Implement and validate **Live Mode** where physical 6-axis robot telemetry strea
 
 - Live physical hardware telemetry source (direct USB streaming from Arduino).
 - (Optional fallback) Baseline datalog and replay:
-  - `backend/data/training_data_0001.csv`
+  - `tinyml-anomaly/data/training_data_0001.csv`
 - Motion execution and anomaly behavior:
-  - `backend/MVS_data_collection.py`
+  - `tinyml-anomaly/MVS_data_collection.py`
 - Datalogger resilience and schema behavior:
-  - `backend/phase2_datalogger.py`
+  - `tinyml-anomaly/phase2_datalogger.py`
 - Simulated node engine:
   - `backend/app/mock_telemetry.py`
 - API mode orchestration:

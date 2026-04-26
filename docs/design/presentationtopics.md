@@ -53,7 +53,7 @@ Date: 2026-04-06
 
 2. Data path
 - Sensor output: Arduino serial prints IMU CSV rows.
-- Host processing: Python reads serial, appends timestamp/NodeID, writes incrementing CSV files in `backend/data`.
+- Host processing: Python reads serial, appends timestamp/NodeID, writes incrementing CSV files in `tinyml-anomaly/data`.
 - Dashboard feed: Backend publishes hybrid telemetry + simulated node state to frontend.
 
 3. Current status (April 6, 2026)

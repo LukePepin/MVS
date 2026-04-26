@@ -8,7 +8,7 @@ Status: Completed (Closeout on 2026-04-16)
 
 - Full sweep completed with consolidated output size: 972 runs evaluated.
 - Final selection artifact regenerated from latest consolidated results:
-  - `backend/ml/anomaly_detection/results/week2/window_sweep_results/summaries/best_setting.json`
+  - `tinyml-anomaly/ml/anomaly_detection/results/week2/window_sweep_results/summaries/best_setting.json`
 
 ### Final Chosen Configuration
 
@@ -40,7 +40,7 @@ Status: Completed (Closeout on 2026-04-16)
 
 ### Reproducibility Command (Selector)
 
-Run from `backend/ml/anomaly_detection/scripts`:
+Run from `tinyml-anomaly/ml/anomaly_detection/scripts`:
 
 ```powershell
 python .\find_best_sweep_setting.py --csv ..\results\week2\window_sweep_results\summaries\consolidated_sweep.csv --status ok
@@ -64,11 +64,11 @@ Start anomaly model development using current baseline data and establish a repr
 ## Inputs
 
 - Primary baseline dataset:
-  - `backend/data/training_data_0001.csv`
+  - `tinyml-anomaly/data/training_data_0001.csv`
 - Motion execution and anomaly behavior context:
-  - `backend/MVS_data_collection.py`
+  - `tinyml-anomaly/MVS_data_collection.py`
 - Collection reliability behavior:
-  - `backend/phase2_datalogger.py`
+  - `tinyml-anomaly/phase2_datalogger.py`
 
 ## Work Plan
 

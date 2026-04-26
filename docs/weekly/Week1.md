@@ -18,11 +18,11 @@ Status: Complete
 ## Evidence Collected
 
 - Robot motion script running with pose validation and collision recovery:
-   - `backend/MVS_data_collection.py`
+   - `tinyml-anomaly/MVS_data_collection.py`
 - Datalogger supports reconnect behavior and COM failover (COM9 and COM14):
-   - `backend/phase2_datalogger.py`
+   - `tinyml-anomaly/phase2_datalogger.py`
 - Continuous baseline dataset available:
-   - `backend/data/training_data_0001.csv`
+   - `tinyml-anomaly/data/training_data_0001.csv`
 - Architecture pivot reference:
    - `docs/design/architecturepivot.md`
 
@@ -60,4 +60,4 @@ Status: Complete
    - Forward use: treat these events as anomaly candidates.
 
 ## Next Steps
-1. Keep data output path standardized at `backend/data` for all new runs in Week 2.
+1. Keep data output path standardized at `tinyml-anomaly/data` for all new runs in Week 2.

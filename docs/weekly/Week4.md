@@ -32,7 +32,7 @@ Week 4 completed with:
 - Exported TFLite artifacts and model header.
 
 4. True on-device inference
-- Added Arduino TinyML inference sketch at `backend/arduino_nano_tinyml_inference/arduino_nano_tinyml_inference.ino`.
+- Added Arduino TinyML inference sketch at `tinyml-anomaly/arduino_nano_tinyml_inference/arduino_nano_tinyml_inference.ino`.
 - Bundled runtime config + model header into sketch folder.
 - Compiled successfully for `arduino:mbed_nano:nano33ble` and uploaded to COM9.
 
@@ -49,13 +49,13 @@ Week 4 completed with:
 1. Build TinyML runtime bundle for sketch
 
 ```powershell
-python backend/ml/anomaly_detection/scripts/generate_tinyml_arduino_bundle.py --model-tflite backend/ml/anomaly_detection/results/tinyml_raw32_week2/export/model_fp32.tflite --scaling-json backend/ml/anomaly_detection/results/tinyml_raw32_week2/model/scaling.json --threshold-json backend/ml/anomaly_detection/results/tinyml_raw32_week2/model/threshold.json --out-sketch-dir backend/arduino_nano_tinyml_inference --window-size 32 --axis-count 6
+python tinyml-anomaly/ml/anomaly_detection/scripts/generate_tinyml_arduino_bundle.py --model-tflite tinyml-anomaly/ml/anomaly_detection/results/tinyml_raw32_week2/export/model_fp32.tflite --scaling-json tinyml-anomaly/ml/anomaly_detection/results/tinyml_raw32_week2/model/scaling.json --threshold-json tinyml-anomaly/ml/anomaly_detection/results/tinyml_raw32_week2/model/threshold.json --out-sketch-dir tinyml-anomaly/arduino_nano_tinyml_inference --window-size 32 --axis-count 6
 ```
 
 2. Compile/upload TinyML sketch
 
 ```powershell
-./scripts/Upload-TinyML-ToArduino.ps1 -Port COM9 -SketchPath backend/arduino_nano_tinyml_inference
+./scripts/Upload-TinyML-ToArduino.ps1 -Port COM9 -SketchPath tinyml-anomaly/arduino_nano_tinyml_inference
 ```
 
 3. Monitor TinyML output
@@ -76,10 +76,10 @@ python backend/ml/anomaly_detection/scripts/generate_tinyml_arduino_bundle.py --
 - Test logs: `artifacts/week4/tests/`
 - Notes and continuity references: `artifacts/week4/notes/`
 - TinyML model outputs:
-  - `backend/ml/anomaly_detection/results/tinyml_raw32_week2/model/eval_report.json`
-  - `backend/ml/anomaly_detection/results/tinyml_raw32_week2/export/model_fp32.tflite`
-  - `backend/ml/anomaly_detection/results/tinyml_raw32_week2/export/model_int8.tflite`
-  - `backend/ml/anomaly_detection/results/tinyml_raw32_week2/export/model_data.h`
+  - `tinyml-anomaly/ml/anomaly_detection/results/tinyml_raw32_week2/model/eval_report.json`
+  - `tinyml-anomaly/ml/anomaly_detection/results/tinyml_raw32_week2/export/model_fp32.tflite`
+  - `tinyml-anomaly/ml/anomaly_detection/results/tinyml_raw32_week2/export/model_int8.tflite`
+  - `tinyml-anomaly/ml/anomaly_detection/results/tinyml_raw32_week2/export/model_data.h`
 
 ## Structure Cleanup Notes
 

@@ -1,7 +1,7 @@
 """
 Test suite for the DES routing engine and PuLP scheduling.
 Verifies EDD ordering, SPT ordering, simulation state transitions,
-and the Trust Decay engine.
+and EARC product route integrity.
 """
 import unittest
 import asyncio
@@ -20,7 +20,6 @@ from backend.simulation.des_engine import (
     SimulationStatus,
     PRODUCTS,
 )
-from backend.ml.trust_decay import TrustDecayEngine
 
 
 class TestEDDScheduling(unittest.TestCase):
@@ -111,38 +110,6 @@ class TestSimulationState(unittest.TestCase):
         self.assertIn("num_jobs", snap)
         self.assertEqual(snap["num_jobs"], 750)
         self.assertEqual(snap["sim_status"], "idle")
-
-
-class TestTrustDecay(unittest.TestCase):
-    """Verify the F8 Trust Equation Decay engine."""
-
-    def test_trust_starts_at_nominal(self):
-        engine = TrustDecayEngine(alpha=0.85, initial_trust=1.0, threshold=0.30)
-        self.assertEqual(engine.current_trust, 1.0)
-
-    def test_trust_decays_on_high_error(self):
-        engine = TrustDecayEngine(alpha=0.85, initial_trust=1.0, threshold=0.30)
-        # Feed high reconstruction errors
-        for _ in range(20):
-            engine.process_telemetry(recon_error=80.0)
-        self.assertLess(engine.current_trust, 0.5, "Trust should decay significantly under sustained high error")
-
-    def test_trust_stable_on_low_error(self):
-        engine = TrustDecayEngine(alpha=0.85, initial_trust=1.0, threshold=0.30)
-        for _ in range(10):
-            engine.process_telemetry(recon_error=1.0)
-        self.assertGreater(engine.current_trust, 0.85, "Trust should remain high with low error")
-
-    def test_compromised_flag(self):
-        engine = TrustDecayEngine(alpha=0.5, initial_trust=1.0, threshold=0.30)
-        for _ in range(50):
-            engine.process_telemetry(recon_error=100.0)
-        self.assertTrue(engine.is_compromised(), "Should flag as compromised after sustained anomaly")
-
-    def test_not_compromised_when_stable(self):
-        engine = TrustDecayEngine(alpha=0.85, initial_trust=1.0, threshold=0.30)
-        engine.process_telemetry(recon_error=5.0)
-        self.assertFalse(engine.is_compromised())
 
 
 class TestProductRoutes(unittest.TestCase):
